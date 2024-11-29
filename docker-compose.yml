@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Host=db;Database=neuronalabs;Username=postgres;Password=postgres
+      - JWT__Secret=your_super_secret_key_here
+      - JWT__ValidIssuer=https://neuronalabs.com
+      - JWT__ValidAudience=https://neuronalabs.com
+      - CORS__AllowedOrigins=http://localhost:3000
+    depends_on:
+      - db
+    networks:
+      - neuronalabs-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:5000
+        - NEXT_PUBLIC_GRAPHQL_URL=http://localhost:5000/graphql
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - neuronalabs-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_DB=neuronalabs
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - neuronalabs-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d neuronalabs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+
+networks:
+  neuronalabs-network:
+    driver: bridge
