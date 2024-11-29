@@ -6,7 +6,7 @@ using NeuronaLabs.Models;
 
 namespace NeuronaLabs.Services
 {
-    public class PatientService
+    public class PatientService : IPatientService
     {
         private readonly NeuronaLabsContext _context;
 
@@ -15,12 +15,15 @@ namespace NeuronaLabs.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<Patient>> GetPatientsAsync()
+        public async Task<IEnumerable<Patient>> GetAllPatientsAsync()
         {
-            return await _context.Patients.ToListAsync();
+            return await _context.Patients
+                .Include(p => p.DiagnosticData)
+                .Include(p => p.DicomStudies)
+                .ToListAsync();
         }
 
-        public async Task<Patient> GetPatientAsync(int id)
+        public async Task<Patient?> GetPatientByIdAsync(int id)
         {
             return await _context.Patients
                 .Include(p => p.DiagnosticData)
@@ -42,16 +45,14 @@ namespace NeuronaLabs.Services
             return patient;
         }
 
-        public async Task<bool> DeletePatientAsync(int id)
+        public async Task DeletePatientAsync(int id)
         {
             var patient = await _context.Patients.FindAsync(id);
             if (patient == null)
-                return false;
+                return;
 
             _context.Patients.Remove(patient);
             await _context.SaveChangesAsync();
-            return true;
         }
     }
 }
-

@@ -7,7 +7,11 @@ import ErrorMessage from '@/components/common/ErrorMessage';
 import Button from '@/components/common/Button';
 
 const DashboardPage: React.FC = () => {
-  const { data: stats, isLoading, error } = useQuery('dashboard-stats', async () => {
+  const {
+    data: stats,
+    isLoading,
+    error,
+  } = useQuery('dashboard-stats', async () => {
     const [patients, studies] = await Promise.all([
       api.patients.getAll(1, 0), // Get total count only
       // Add more stats queries here
@@ -34,7 +38,7 @@ const DashboardPage: React.FC = () => {
           <div className="mt-4 flex md:mt-0 md:ml-4">
             <Button
               variant="primary"
-              onClick={() => window.location.href = '/patients/new'}
+              onClick={() => (window.location.href = '/patients/new')}
             >
               Add Patient
             </Button>
@@ -112,28 +116,28 @@ const DashboardPage: React.FC = () => {
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Button
                   variant="secondary"
-                  onClick={() => window.location.href = '/patients/new'}
+                  onClick={() => (window.location.href = '/patients/new')}
                   className="w-full justify-center"
                 >
                   New Patient
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => window.location.href = '/studies/new'}
+                  onClick={() => (window.location.href = '/studies/new')}
                   className="w-full justify-center"
                 >
                   New Study
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => window.location.href = '/analytics'}
+                  onClick={() => (window.location.href = '/analytics')}
                   className="w-full justify-center"
                 >
                   View Analytics
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => window.location.href = '/settings'}
+                  onClick={() => (window.location.href = '/settings')}
                   className="w-full justify-center"
                 >
                   Settings

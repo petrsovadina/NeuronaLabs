@@ -9,13 +9,23 @@ using NeuronaLabs.GraphQL.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using HotChocolate.Execution.Configuration;
+using HotChocolate.AspNetCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using NeuronaLabs.HealthChecks;
+using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
 builder.Services.AddDbContext<NeuronaLabsContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection"), 
+        name: "Database",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: new[] { "db" });
 
 // Authentication
 var jwtSecret = builder.Configuration["JWT:Secret"];
@@ -39,6 +49,38 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddAuthorization();
+
+// Add response compression
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+});
+
+// CORS
+var corsOrigins = builder.Configuration["CORS:AllowedOrigins"]?.Split(',') ?? Array.Empty<string>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowedOrigins", policy =>
+    {
+        policy.WithOrigins(corsOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
+
+// GraphQL
+builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<Query>()
+    .AddMutationType<Mutation>()
+    .AddAuthorization()
+    .AddFiltering()
+    .AddSorting()
+    .AddProjections()
+    .AddErrorFilter<GraphQLErrorFilter>();
+
 // Services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -46,45 +88,48 @@ builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IDiagnosticDataService, DiagnosticDataService>();
 builder.Services.AddScoped<IDicomStudyService, DicomStudyService>();
 
-// GraphQL
-builder.Services
-    .AddGraphQLServer()
-    .AddQueryType<Query>()
-    .AddMutationType<Mutation>()
-    .AddAuthorizationHandler()
-    .AddAuthorization();
+// Add logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 
-// CORS
-var corsOrigins = builder.Configuration["CORS:AllowedOrigins"]?.Split(',') 
-    ?? new[] { "http://localhost:3000" };
-
-builder.Services.AddCors(options =>
+if (builder.Environment.IsProduction())
 {
-    options.AddPolicy("AllowedOrigins",
-        builder => builder
-            .WithOrigins(corsOrigins)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials());
-});
+    // Add Application Insights
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+    });
+}
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
 
-// Middleware
-app.UseMiddleware<LoggingMiddleware>();
-app.UseMiddleware<RateLimitingMiddleware>();
-
+app.UseResponseCompression();
 app.UseCors("AllowedOrigins");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
+
 // GraphQL endpoint
 app.MapGraphQL();
+
+// Add health check endpoint
+app.MapHealthChecks("/health");
+
+// Ensure database is created and migrations are applied
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<NeuronaLabsContext>();
+    context.Database.Migrate();
+}
 
 app.Run();

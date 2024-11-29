@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -23,13 +24,13 @@ namespace NeuronaLabs.Tests
         }
 
         [Fact]
-        public async Task GetPatientsAsync_ShouldReturnAllPatients()
+        public async Task GetAllPatientsAsync_ReturnsAllPatients()
         {
             // Arrange
             var patients = new List<Patient>
             {
-                new Patient { Id = 1, Name = "John Doe" },
-                new Patient { Id = 2, Name = "Jane Doe" }
+                new Patient { Id = 1, Name = "John Doe", Gender = "Male" },
+                new Patient { Id = 2, Name = "Jane Doe", Gender = "Female" }
             };
 
             var mockSet = new Mock<DbSet<Patient>>();
@@ -41,7 +42,7 @@ namespace NeuronaLabs.Tests
             _mockContext.Setup(c => c.Patients).Returns(mockSet.Object);
 
             // Act
-            var result = await _patientService.GetPatientsAsync();
+            var result = await _patientService.GetAllPatientsAsync();
 
             // Assert
             Assert.Equal(2, result.Count());
@@ -86,25 +87,20 @@ namespace NeuronaLabs.Tests
         }
 
         [Fact]
-        public async Task DeletePatientAsync_ShouldRemovePatient()
+        public async Task DeletePatientAsync_DeletesPatient()
         {
             // Arrange
-            var patientId = 1;
-            var patient = new Patient { Id = patientId, Name = "John Doe" };
-            
+            var patient = new Patient { Id = 1, Name = "John Doe" };
             var mockSet = new Mock<DbSet<Patient>>();
-            mockSet.Setup(m => m.FindAsync(patientId)).ReturnsAsync(patient);
-            
             _mockContext.Setup(c => c.Patients).Returns(mockSet.Object);
-            _mockContext.Setup(c => c.SaveChangesAsync(default)).ReturnsAsync(1);
+            _mockContext.Setup(c => c.Patients.FindAsync(1)).ReturnsAsync(patient);
 
             // Act
-            var result = await _patientService.DeletePatientAsync(patientId);
+            await _patientService.DeletePatientAsync(1);
 
             // Assert
-            Assert.True(result);
-            mockSet.Verify(m => m.Remove(It.IsAny<Patient>()), Times.Once());
-            _mockContext.Verify(m => m.SaveChangesAsync(default), Times.Once());
+            _mockContext.Verify(c => c.Patients.Remove(patient), Times.Once);
+            _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

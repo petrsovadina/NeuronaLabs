@@ -4,6 +4,7 @@ namespace NeuronaLabs.Services
 {
     public interface IDiagnosticDataService
     {
+        Task<IEnumerable<DiagnosticData>> GetAllDiagnosticDataAsync();
         Task<DiagnosticData?> GetDiagnosticDataByIdAsync(int id);
         Task<IEnumerable<DiagnosticData>> GetDiagnosticDataByPatientIdAsync(int patientId);
         Task<DiagnosticData> CreateDiagnosticDataAsync(DiagnosticData diagnosticData);

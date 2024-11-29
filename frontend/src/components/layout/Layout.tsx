@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import ErrorBoundary from '../common/ErrorBoundary';
+import { Toaster } from '@/components/ui/toaster';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,17 +33,17 @@ const Layout: React.FC<LayoutProps> = ({ children, title = 'NeuronaLabs' }) => {
 
       <div className="min-h-screen bg-background">
         {isAuthenticated && <Navbar />}
-        
+
         <div className="flex">
           {isAuthenticated && <Sidebar />}
-          
+
           <main className="flex-1 p-6">
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
+            <ErrorBoundary>{children}</ErrorBoundary>
           </main>
         </div>
       </div>
+
+      <Toaster />
     </>
   );
 };

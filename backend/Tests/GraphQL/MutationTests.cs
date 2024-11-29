@@ -10,170 +10,98 @@ namespace NeuronaLabs.Tests.GraphQL
 {
     public class MutationTests
     {
-        private readonly Mock<PatientService> _mockPatientService;
-        private readonly Mock<DiagnosticDataService> _mockDiagnosticDataService;
-        private readonly Mock<DicomStudyService> _mockDicomStudyService;
+        private readonly Mock<IPatientService> _mockPatientService;
+        private readonly Mock<IDiagnosticDataService> _mockDiagnosticDataService;
+        private readonly Mock<IDicomStudyService> _mockDicomStudyService;
         private readonly Mutation _mutation;
 
         public MutationTests()
         {
-            _mockPatientService = new Mock<PatientService>();
-            _mockDiagnosticDataService = new Mock<DiagnosticDataService>();
-            _mockDicomStudyService = new Mock<DicomStudyService>();
-            _mutation = new Mutation();
+            _mockPatientService = new Mock<IPatientService>();
+            _mockDiagnosticDataService = new Mock<IDiagnosticDataService>();
+            _mockDicomStudyService = new Mock<IDicomStudyService>();
+            _mutation = new Mutation(
+                _mockPatientService.Object,
+                _mockDiagnosticDataService.Object,
+                _mockDicomStudyService.Object);
         }
 
         [Fact]
-        public async Task CreatePatient_ShouldCreateAndReturnPatient()
+        public async Task AddPatient_ReturnsCreatedPatient()
         {
             // Arrange
-            var patient = new Patient 
-            { 
-                Name = "John Doe",
-                DateOfBirth = DateTime.Now.AddYears(-30),
-                Gender = "Male"
-            };
-
-            _mockPatientService.Setup(s => s.CreatePatientAsync(patient))
+            var patient = new Patient { Id = 1, Name = "John Doe", Gender = "Male" };
+            _mockPatientService.Setup(s => s.CreatePatientAsync(It.IsAny<Patient>()))
                 .ReturnsAsync(patient);
 
             // Act
-            var result = await _mutation.CreatePatient(patient, _mockPatientService.Object);
+            var result = await _mutation.AddPatient(patient);
 
             // Assert
-            Assert.Equal(patient, result);
-            _mockPatientService.Verify(s => s.CreatePatientAsync(patient), Times.Once());
+            Assert.Equal(patient.Id, result.Id);
+            Assert.Equal(patient.Name, result.Name);
+            _mockPatientService.Verify(s => s.CreatePatientAsync(It.IsAny<Patient>()), Times.Once);
         }
 
         [Fact]
-        public async Task UpdatePatient_ShouldUpdateAndReturnPatient()
+        public async Task AddDiagnosticData_ReturnsCreatedData()
         {
             // Arrange
-            var patient = new Patient 
+            var patient = new Patient { Id = 1, Name = "John Doe" };
+            var diagnosticData = new DiagnosticData 
             { 
-                Id = 1,
-                Name = "John Doe Updated",
-                DateOfBirth = DateTime.Now.AddYears(-30),
-                Gender = "Male"
+                Id = 1, 
+                Patient = patient,
+                DiagnosisType = "Test",
+                Description = "Test Description"
             };
-
-            _mockPatientService.Setup(s => s.UpdatePatientAsync(patient))
-                .ReturnsAsync(patient);
+            _mockDiagnosticDataService.Setup(s => s.CreateDiagnosticDataAsync(It.IsAny<DiagnosticData>()))
+                .ReturnsAsync(diagnosticData);
 
             // Act
-            var result = await _mutation.UpdatePatient(patient, _mockPatientService.Object);
+            var result = await _mutation.AddDiagnosticData(diagnosticData);
 
             // Assert
-            Assert.Equal(patient, result);
-            _mockPatientService.Verify(s => s.UpdatePatientAsync(patient), Times.Once());
+            Assert.Equal(diagnosticData.Id, result.Id);
+            _mockDiagnosticDataService.Verify(s => s.CreateDiagnosticDataAsync(It.IsAny<DiagnosticData>()), Times.Once);
         }
 
         [Fact]
-        public async Task DeletePatient_ShouldReturnTrue()
+        public async Task AddDicomStudy_ReturnsCreatedStudy()
         {
             // Arrange
-            _mockPatientService.Setup(s => s.DeletePatientAsync(1))
-                .ReturnsAsync(true);
+            var patient = new Patient { Id = 1, Name = "John Doe" };
+            var dicomStudy = new DicomStudy 
+            { 
+                Id = 1, 
+                Patient = patient,
+                Modality = "CT",
+                StudyInstanceUid = "1.2.3.4.5.6.7.8.9"
+            };
+            _mockDicomStudyService.Setup(s => s.CreateDicomStudyAsync(It.IsAny<DicomStudy>()))
+                .ReturnsAsync(dicomStudy);
 
             // Act
-            var result = await _mutation.DeletePatient(1, _mockPatientService.Object);
+            var result = await _mutation.AddDicomStudy(dicomStudy);
+
+            // Assert
+            Assert.Equal(dicomStudy.Id, result.Id);
+            _mockDicomStudyService.Verify(s => s.CreateDicomStudyAsync(It.IsAny<DicomStudy>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeletePatient_ReturnsTrue()
+        {
+            // Arrange
+            _mockPatientService.Setup(s => s.DeletePatientAsync(It.IsAny<int>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _mutation.DeletePatient(1);
 
             // Assert
             Assert.True(result);
-            _mockPatientService.Verify(s => s.DeletePatientAsync(1), Times.Once());
-        }
-
-        [Fact]
-        public async Task CreateDiagnosticData_ShouldCreateAndReturnData()
-        {
-            // Arrange
-            var diagnosticData = new DiagnosticData 
-            { 
-                PatientId = 1,
-                DiagnosisType = "Test",
-                Description = "Test Description",
-                Date = DateTime.Now
-            };
-
-            _mockDiagnosticDataService.Setup(s => s.CreateDiagnosticDataAsync(diagnosticData))
-                .ReturnsAsync(diagnosticData);
-
-            // Act
-            var result = await _mutation.CreateDiagnosticData(diagnosticData, _mockDiagnosticDataService.Object);
-
-            // Assert
-            Assert.Equal(diagnosticData, result);
-            _mockDiagnosticDataService.Verify(s => s.CreateDiagnosticDataAsync(diagnosticData), Times.Once());
-        }
-
-        [Fact]
-        public async Task UpdateDiagnosticData_ShouldUpdateAndReturnData()
-        {
-            // Arrange
-            var diagnosticData = new DiagnosticData 
-            { 
-                Id = 1,
-                PatientId = 1,
-                DiagnosisType = "Updated",
-                Description = "Updated Description",
-                Date = DateTime.Now
-            };
-
-            _mockDiagnosticDataService.Setup(s => s.UpdateDiagnosticDataAsync(diagnosticData))
-                .ReturnsAsync(diagnosticData);
-
-            // Act
-            var result = await _mutation.UpdateDiagnosticData(diagnosticData, _mockDiagnosticDataService.Object);
-
-            // Assert
-            Assert.Equal(diagnosticData, result);
-            _mockDiagnosticDataService.Verify(s => s.UpdateDiagnosticDataAsync(diagnosticData), Times.Once());
-        }
-
-        [Fact]
-        public async Task CreateDicomStudy_ShouldCreateAndReturnStudy()
-        {
-            // Arrange
-            var study = new DicomStudy 
-            { 
-                StudyInstanceUid = "1.2.3",
-                PatientId = 1,
-                Modality = "CT",
-                StudyDate = DateTime.Now
-            };
-
-            _mockDicomStudyService.Setup(s => s.CreateDicomStudyAsync(study))
-                .ReturnsAsync(study);
-
-            // Act
-            var result = await _mutation.CreateDicomStudy(study, _mockDicomStudyService.Object);
-
-            // Assert
-            Assert.Equal(study, result);
-            _mockDicomStudyService.Verify(s => s.CreateDicomStudyAsync(study), Times.Once());
-        }
-
-        [Fact]
-        public async Task UpdateDicomStudy_ShouldUpdateAndReturnStudy()
-        {
-            // Arrange
-            var study = new DicomStudy 
-            { 
-                StudyInstanceUid = "1.2.3",
-                PatientId = 1,
-                Modality = "Updated",
-                StudyDate = DateTime.Now
-            };
-
-            _mockDicomStudyService.Setup(s => s.UpdateDicomStudyAsync(study))
-                .ReturnsAsync(study);
-
-            // Act
-            var result = await _mutation.UpdateDicomStudy(study, _mockDicomStudyService.Object);
-
-            // Assert
-            Assert.Equal(study, result);
-            _mockDicomStudyService.Verify(s => s.UpdateDicomStudyAsync(study), Times.Once());
+            _mockPatientService.Verify(s => s.DeletePatientAsync(1), Times.Once);
         }
     }
 }

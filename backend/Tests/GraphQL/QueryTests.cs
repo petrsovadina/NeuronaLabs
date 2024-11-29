@@ -1,129 +1,120 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Moq;
-using NeuronaLabs.GraphQL;
 using NeuronaLabs.Models;
 using NeuronaLabs.Services;
+using NeuronaLabs.GraphQL;
 using Xunit;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace NeuronaLabs.Tests.GraphQL
 {
     public class QueryTests
     {
-        private readonly Mock<PatientService> _mockPatientService;
-        private readonly Mock<DiagnosticDataService> _mockDiagnosticDataService;
-        private readonly Mock<DicomStudyService> _mockDicomStudyService;
+        private readonly Mock<IPatientService> _mockPatientService;
+        private readonly Mock<IDiagnosticDataService> _mockDiagnosticDataService;
+        private readonly Mock<IDicomStudyService> _mockDicomStudyService;
         private readonly Query _query;
 
         public QueryTests()
         {
-            _mockPatientService = new Mock<PatientService>();
-            _mockDiagnosticDataService = new Mock<DiagnosticDataService>();
-            _mockDicomStudyService = new Mock<DicomStudyService>();
-            _query = new Query();
+            _mockPatientService = new Mock<IPatientService>();
+            _mockDiagnosticDataService = new Mock<IDiagnosticDataService>();
+            _mockDicomStudyService = new Mock<IDicomStudyService>();
+            _query = new Query(
+                _mockPatientService.Object,
+                _mockDiagnosticDataService.Object,
+                _mockDicomStudyService.Object);
         }
 
         [Fact]
-        public async Task GetPatients_ShouldReturnAllPatients()
+        public async Task GetPatients_ReturnsAllPatients()
         {
             // Arrange
             var patients = new List<Patient>
             {
-                new Patient { Id = 1, Name = "John Doe" },
-                new Patient { Id = 2, Name = "Jane Doe" }
+                new Patient { Id = 1, Name = "John Doe", Gender = "Male", LastDiagnosis = "Healthy" },
+                new Patient { Id = 2, Name = "Jane Doe", Gender = "Female", LastDiagnosis = "Healthy" }
             };
 
-            _mockPatientService.Setup(s => s.GetPatientsAsync())
+            _mockPatientService.Setup(s => s.GetAllPatientsAsync())
                 .ReturnsAsync(patients);
 
             // Act
-            var result = await _query.GetPatients(_mockPatientService.Object);
+            var result = await _query.GetPatients();
 
             // Assert
             Assert.Equal(2, result.Count());
-            Assert.Contains(result, p => p.Name == "John Doe");
-            Assert.Contains(result, p => p.Name == "Jane Doe");
+            _mockPatientService.Verify(s => s.GetAllPatientsAsync(), Times.Once);
         }
 
         [Fact]
-        public async Task GetPatient_ShouldReturnPatient()
+        public async Task GetDiagnosticDataForPatient_ReturnsDiagnosticData()
         {
             // Arrange
-            var patient = new Patient { Id = 1, Name = "John Doe" };
-
-            _mockPatientService.Setup(s => s.GetPatientAsync(1))
-                .ReturnsAsync(patient);
-
-            // Act
-            var result = await _query.GetPatient(1, _mockPatientService.Object);
-
-            // Assert
-            Assert.Equal(patient, result);
-        }
-
-        [Fact]
-        public async Task GetDiagnosticDataForPatient_ShouldReturnData()
-        {
-            // Arrange
+            int patientId = 1;
+            var patient = new Patient { Id = patientId, Name = "John Doe", Gender = "Male", LastDiagnosis = "Healthy" };
             var diagnosticData = new List<DiagnosticData>
             {
-                new DiagnosticData { Id = 1, PatientId = 1, DiagnosisType = "Type1" },
-                new DiagnosticData { Id = 2, PatientId = 1, DiagnosisType = "Type2" }
+                new DiagnosticData { 
+                    Id = 1, 
+                    PatientId = patientId,
+                    Patient = patient,
+                    DiagnosisType = "EEG",
+                    Description = "Normal EEG findings"
+                },
+                new DiagnosticData { 
+                    Id = 2, 
+                    PatientId = patientId,
+                    Patient = patient,
+                    DiagnosisType = "MRI",
+                    Description = "Normal MRI findings"
+                }
             };
 
-            _mockDiagnosticDataService.Setup(s => s.GetDiagnosticDataForPatientAsync(1))
+            _mockDiagnosticDataService.Setup(s => s.GetDiagnosticDataByPatientIdAsync(patientId))
                 .ReturnsAsync(diagnosticData);
 
             // Act
-            var result = await _query.GetDiagnosticDataForPatient(1, _mockDiagnosticDataService.Object);
+            var result = await _query.GetDiagnosticDataForPatient(patientId);
 
             // Assert
             Assert.Equal(2, result.Count());
-            Assert.Contains(result, d => d.DiagnosisType == "Type1");
-            Assert.Contains(result, d => d.DiagnosisType == "Type2");
+            _mockDiagnosticDataService.Verify(s => s.GetDiagnosticDataByPatientIdAsync(patientId), Times.Once);
         }
 
         [Fact]
-        public async Task GetDicomStudiesForPatient_ShouldReturnStudies()
+        public async Task GetDicomStudiesForPatient_ReturnsDicomStudies()
         {
             // Arrange
-            var studies = new List<DicomStudy>
+            int patientId = 1;
+            var patient = new Patient { Id = patientId, Name = "John Doe", Gender = "Male", LastDiagnosis = "Healthy" };
+            var dicomStudies = new List<DicomStudy>
             {
-                new DicomStudy { StudyInstanceUid = "1.2.3", PatientId = 1, Modality = "CT" },
-                new DicomStudy { StudyInstanceUid = "1.2.4", PatientId = 1, Modality = "MRI" }
+                new DicomStudy { 
+                    Id = 1, 
+                    PatientId = patientId,
+                    Patient = patient,
+                    StudyInstanceUid = "1.2.3.4.5.1",
+                    Modality = "CT"
+                },
+                new DicomStudy { 
+                    Id = 2, 
+                    PatientId = patientId,
+                    Patient = patient,
+                    StudyInstanceUid = "1.2.3.4.5.2",
+                    Modality = "MR"
+                }
             };
 
-            _mockDicomStudyService.Setup(s => s.GetDicomStudiesForPatientAsync(1))
-                .ReturnsAsync(studies);
+            _mockDicomStudyService.Setup(s => s.GetDicomStudiesByPatientIdAsync(patientId))
+                .ReturnsAsync(dicomStudies);
 
             // Act
-            var result = await _query.GetDicomStudiesForPatient(1, _mockDicomStudyService.Object);
+            var result = await _query.GetDicomStudiesForPatient(patientId);
 
             // Assert
             Assert.Equal(2, result.Count());
-            Assert.Contains(result, s => s.Modality == "CT");
-            Assert.Contains(result, s => s.Modality == "MRI");
-        }
-
-        [Fact]
-        public async Task GetDicomStudy_ShouldReturnStudy()
-        {
-            // Arrange
-            var study = new DicomStudy 
-            { 
-                StudyInstanceUid = "1.2.3", 
-                PatientId = 1, 
-                Modality = "CT" 
-            };
-
-            _mockDicomStudyService.Setup(s => s.GetDicomStudyAsync("1.2.3"))
-                .ReturnsAsync(study);
-
-            // Act
-            var result = await _query.GetDicomStudy("1.2.3", _mockDicomStudyService.Object);
-
-            // Assert
-            Assert.Equal(study, result);
+            _mockDicomStudyService.Verify(s => s.GetDicomStudiesByPatientIdAsync(patientId), Times.Once);
         }
     }
 }

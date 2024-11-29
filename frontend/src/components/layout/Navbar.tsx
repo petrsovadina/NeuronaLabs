@@ -25,35 +25,41 @@ const Navbar: React.FC = () => {
           </Link>
           <div className="hidden md:flex items-center space-x-6 ml-6">
             <Link href="/patients">
-              <a className={`text-sm font-medium transition-colors hover:text-primary ${
-                router.pathname.startsWith('/patients')
-                  ? 'text-foreground'
-                  : 'text-foreground/60'
-              }`}>
+              <a
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  router.pathname.startsWith('/patients')
+                    ? 'text-foreground'
+                    : 'text-foreground/60'
+                }`}
+              >
                 Patients
               </a>
             </Link>
             <Link href="/studies">
-              <a className={`text-sm font-medium transition-colors hover:text-primary ${
-                router.pathname.startsWith('/studies')
-                  ? 'text-foreground'
-                  : 'text-foreground/60'
-              }`}>
+              <a
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  router.pathname.startsWith('/studies')
+                    ? 'text-foreground'
+                    : 'text-foreground/60'
+                }`}
+              >
                 Studies
               </a>
             </Link>
             <Link href="/analytics">
-              <a className={`text-sm font-medium transition-colors hover:text-primary ${
-                router.pathname.startsWith('/analytics')
-                  ? 'text-foreground'
-                  : 'text-foreground/60'
-              }`}>
+              <a
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  router.pathname.startsWith('/analytics')
+                    ? 'text-foreground'
+                    : 'text-foreground/60'
+                }`}
+              >
                 Analytics
               </a>
             </Link>
           </div>
         </div>
-        
+
         <div className="flex flex-1 items-center justify-end space-x-4">
           <div className="flex items-center space-x-4">
             <Avatar>

@@ -21,7 +21,7 @@ interface PatientsState {
   removePatient: (id: string) => void;
 }
 
-export const usePatientsStore = create<PatientsState>((set) => ({
+export const usePatientsStore = create<PatientsState>(set => ({
   patients: [],
   selectedPatient: null,
   loading: false,
@@ -32,7 +32,7 @@ export const usePatientsStore = create<PatientsState>((set) => ({
     total: 0,
     hasMore: false,
   },
-  setPatients: (response) =>
+  setPatients: response =>
     set({
       patients: response.items,
       pagination: {
@@ -42,17 +42,17 @@ export const usePatientsStore = create<PatientsState>((set) => ({
         hasMore: response.hasMore,
       },
     }),
-  setSelectedPatient: (patient) => set({ selectedPatient: patient }),
-  setLoading: (loading) => set({ loading }),
-  setError: (error) => set({ error }),
-  addPatient: (patient) =>
-    set((state) => ({ patients: [...state.patients, patient] })),
-  updatePatient: (patient) =>
-    set((state) => ({
-      patients: state.patients.map((p) => (p.id === patient.id ? patient : p)),
+  setSelectedPatient: patient => set({ selectedPatient: patient }),
+  setLoading: loading => set({ loading }),
+  setError: error => set({ error }),
+  addPatient: patient =>
+    set(state => ({ patients: [...state.patients, patient] })),
+  updatePatient: patient =>
+    set(state => ({
+      patients: state.patients.map(p => (p.id === patient.id ? patient : p)),
     })),
-  removePatient: (id) =>
-    set((state) => ({
-      patients: state.patients.filter((p) => p.id !== id),
+  removePatient: id =>
+    set(state => ({
+      patients: state.patients.filter(p => p.id !== id),
     })),
 }));

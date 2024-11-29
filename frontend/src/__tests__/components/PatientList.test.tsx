@@ -104,7 +104,9 @@ describe('PatientList', () => {
 
   it('handles error state correctly', async () => {
     const queryClient = new QueryClient();
-    (api.patients.getAll as jest.Mock).mockRejectedValue(new Error('Failed to fetch'));
+    (api.patients.getAll as jest.Mock).mockRejectedValue(
+      new Error('Failed to fetch')
+    );
 
     render(
       <QueryClientProvider client={queryClient}>

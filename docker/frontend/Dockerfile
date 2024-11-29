@@ -1,15 +1,15 @@
-FROM node:14
+FROM node:18
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY frontend/package*.json ./
 RUN npm install
 
-COPY . .
+COPY frontend/ .
 
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 EXPOSE 3000
 
 CMD ["npm", "start"]
-

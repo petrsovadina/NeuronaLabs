@@ -66,10 +66,13 @@ export const api = {
       patientId: string,
       input: Omit<DiagnosticData, 'id' | 'patientId' | 'createdAt'>
     ): Promise<DiagnosticData> => {
-      const response = await graphqlClient.request(MUTATIONS.ADD_DIAGNOSTIC_DATA, {
-        patientId,
-        input,
-      });
+      const response = await graphqlClient.request(
+        MUTATIONS.ADD_DIAGNOSTIC_DATA,
+        {
+          patientId,
+          input,
+        }
+      );
       return response.addDiagnosticData;
     },
   },

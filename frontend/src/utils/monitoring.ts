@@ -6,7 +6,8 @@ import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
 const reactPlugin = new ReactPlugin();
 const appInsights = new ApplicationInsights({
   config: {
-    connectionString: process.env.NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING,
+    connectionString:
+      process.env.NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING,
     extensions: [reactPlugin],
     enableAutoRouteTracking: true,
     enableCorsCorrelation: true,
@@ -32,7 +33,7 @@ export const initializeMonitoring = () => {
 export const trackError = (error: Error, context?: Record<string, any>) => {
   Sentry.captureException(error, { extra: context });
   appInsights.trackException({ error, properties: context });
-  
+
   if (process.env.NODE_ENV === 'development') {
     console.error('Error:', error, 'Context:', context);
   }

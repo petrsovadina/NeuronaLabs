@@ -1,7 +1,12 @@
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Načtení .env souboru z kořenového adresáře projektu
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   images: {
     domains: ['localhost'],
   },
@@ -10,6 +15,8 @@ const nextConfig = {
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING:
       process.env.NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
   async redirects() {
     return [
@@ -49,7 +56,6 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
       transpileClientSDK: true,
       tunnelRoute: '/monitoring',
       hideSourceMaps: true,
-      disableLogger: true,
     }
   );
 } else {

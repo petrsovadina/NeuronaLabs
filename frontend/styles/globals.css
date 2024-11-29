@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+ 
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+ 
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+ 
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --ring: 215 20.2% 65.1%;
+ 
+    --radius: 0.5rem;
+
+    /* Medical theme colors */
+    --medical-blue: 201 100% 36%;
+    --medical-green: 142 76% 36%;
+    --medical-red: 354 70% 54%;
+    --medical-yellow: 45 93% 47%;
+    --medical-purple: 269 56% 45%;
+    
+    /* Status colors */
+    --status-critical: 0 84% 60%;
+    --status-warning: 38 92% 50%;
+    --status-stable: 142 71% 45%;
+    --status-monitoring: 201 96% 32%;
+  }
+ 
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+ 
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+ 
+    --popover: 224 71% 4%;
+    --popover-foreground: 215 20.2% 65.1%;
+ 
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+ 
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 1.2%;
+ 
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --ring: 216 34% 17%;
+
+    /* Medical theme colors - dark mode */
+    --medical-blue: 201 85% 45%;
+    --medical-green: 142 76% 45%;
+    --medical-red: 354 70% 60%;
+    --medical-yellow: 45 93% 54%;
+    --medical-purple: 269 56% 52%;
+
+    /* Status colors - dark mode */
+    --status-critical: 0 84% 65%;
+    --status-warning: 38 92% 55%;
+    --status-stable: 142 71% 50%;
+    --status-monitoring: 201 96% 37%;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .medical-gradient {
+    @apply bg-gradient-to-r from-[hsl(var(--medical-blue))] to-[hsl(var(--medical-purple))];
+  }
+  
+  .status-badge {
+    @apply px-2 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .status-badge-critical {
+    @apply status-badge bg-[hsl(var(--status-critical))] text-white;
+  }
+  
+  .status-badge-warning {
+    @apply status-badge bg-[hsl(var(--status-warning))] text-black;
+  }
+  
+  .status-badge-stable {
+    @apply status-badge bg-[hsl(var(--status-stable))] text-white;
+  }
+  
+  .status-badge-monitoring {
+    @apply status-badge bg-[hsl(var(--status-monitoring))] text-white;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}

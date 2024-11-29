@@ -15,9 +15,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -25,7 +25,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -37,19 +37,19 @@ type FormData = z.infer<typeof formSchema>;
 const LoginPage: React.FC = () => {
   const router = useRouter();
   const { login } = useAuthStore();
-  
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: '',
+      password: '',
     },
   });
 
   const mutation = useMutation(
     (data: FormData) => api.auth.login(data.email, data.password),
     {
-      onSuccess: (data) => {
+      onSuccess: data => {
         login(data.token, data.user);
         router.push('/');
       },
@@ -114,7 +114,7 @@ const LoginPage: React.FC = () => {
                 className="w-full"
                 disabled={mutation.isLoading}
               >
-                {mutation.isLoading ? "Signing in..." : "Sign in"}
+                {mutation.isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
           </Form>
@@ -126,12 +126,18 @@ const LoginPage: React.FC = () => {
             </p>
           )}
           <p className="text-sm text-muted-foreground text-center px-8">
-            By signing in, you agree to our{" "}
-            <a href="/terms" className="underline underline-offset-4 hover:text-primary">
+            By signing in, you agree to our{' '}
+            <a
+              href="/terms"
+              className="underline underline-offset-4 hover:text-primary"
+            >
               Terms of Service
-            </a>{" "}
-            and{" "}
-            <a href="/privacy" className="underline underline-offset-4 hover:text-primary">
+            </a>{' '}
+            and{' '}
+            <a
+              href="/privacy"
+              className="underline underline-offset-4 hover:text-primary"
+            >
               Privacy Policy
             </a>
           </p>

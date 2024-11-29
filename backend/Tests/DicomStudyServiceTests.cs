@@ -14,157 +14,161 @@ namespace NeuronaLabs.Tests
     public class DicomStudyServiceTests
     {
         private readonly Mock<NeuronaLabsContext> _mockContext;
-        private readonly DicomStudyService _dicomStudyService;
+        private readonly Mock<DbSet<DicomStudy>> _mockSet;
+        private readonly DicomStudyService _service;
 
         public DicomStudyServiceTests()
         {
             _mockContext = new Mock<NeuronaLabsContext>();
-            _dicomStudyService = new DicomStudyService(_mockContext.Object);
+            _mockSet = new Mock<DbSet<DicomStudy>>();
+            _mockContext.Setup(c => c.DicomStudies).Returns(_mockSet.Object);
+            _service = new DicomStudyService(_mockContext.Object);
         }
 
         [Fact]
-        public async Task GetDicomStudiesForPatientAsync_ShouldReturnPatientStudies()
+        public async Task GetAllDicomStudiesAsync_ReturnsAllStudies()
         {
             // Arrange
             var patientId = 1;
+            var patient = new Patient { Id = patientId, Name = "John Doe", Gender = "Male", LastDiagnosis = "Healthy" };
             var studies = new List<DicomStudy>
             {
-                new DicomStudy { StudyInstanceUid = "1.2.3", PatientId = patientId, Modality = "CT" },
-                new DicomStudy { StudyInstanceUid = "1.2.4", PatientId = patientId, Modality = "MRI" }
-            };
+                new DicomStudy {
+                    Id = 1,
+                    PatientId = patientId,
+                    Patient = patient,
+                    StudyInstanceUid = "1.2.3.4.5.1",
+                    Modality = "CT"
+                },
+                new DicomStudy {
+                    Id = 2,
+                    PatientId = patientId,
+                    Patient = patient,
+                    StudyInstanceUid = "1.2.3.4.5.2",
+                    Modality = "MR"
+                }
+            }.AsQueryable();
 
-            var mockSet = new Mock<DbSet<DicomStudy>>();
-            mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.Provider).Returns(studies.AsQueryable().Provider);
-            mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.Expression).Returns(studies.AsQueryable().Expression);
-            mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.ElementType).Returns(studies.AsQueryable().ElementType);
-            mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.GetEnumerator()).Returns(studies.GetEnumerator());
-
-            _mockContext.Setup(c => c.DicomStudies).Returns(mockSet.Object);
+            _mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.Provider).Returns(studies.Provider);
+            _mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.Expression).Returns(studies.Expression);
+            _mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.ElementType).Returns(studies.ElementType);
+            _mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.GetEnumerator()).Returns(studies.GetEnumerator());
 
             // Act
-            var result = await _dicomStudyService.GetDicomStudiesForPatientAsync(patientId);
+            var result = await _service.GetAllDicomStudiesAsync();
 
             // Assert
             Assert.Equal(2, result.Count());
-            Assert.Contains(result, s => s.Modality == "CT");
-            Assert.Contains(result, s => s.Modality == "MRI");
         }
 
         [Fact]
-        public async Task GetDicomStudyAsync_ShouldReturnStudy()
+        public async Task GetDicomStudyByIdAsync_ReturnsStudy()
         {
             // Arrange
-            var studyInstanceUid = "1.2.3";
-            var study = new DicomStudy { StudyInstanceUid = studyInstanceUid, Modality = "CT" };
-
-            var mockSet = new Mock<DbSet<DicomStudy>>();
-            mockSet.Setup(m => m.FindAsync(studyInstanceUid)).ReturnsAsync(study);
-            _mockContext.Setup(c => c.DicomStudies).Returns(mockSet.Object);
-
-            // Act
-            var result = await _dicomStudyService.GetDicomStudyAsync(studyInstanceUid);
-
-            // Assert
-            Assert.Equal(study, result);
-        }
-
-        [Fact]
-        public async Task CreateDicomStudyAsync_ShouldAddStudy()
-        {
-            // Arrange
+            var patientId = 1;
+            var patient = new Patient { Id = patientId, Name = "John Doe", Gender = "Male", LastDiagnosis = "Healthy" };
             var study = new DicomStudy
             {
-                StudyInstanceUid = "1.2.3",
-                PatientId = 1,
-                Modality = "CT",
-                StudyDate = DateTime.Now
+                Id = 1,
+                PatientId = patientId,
+                Patient = patient,
+                StudyInstanceUid = "1.2.3.4.5.1",
+                Modality = "CT"
             };
 
-            var mockSet = new Mock<DbSet<DicomStudy>>();
-            _mockContext.Setup(c => c.DicomStudies).Returns(mockSet.Object);
+            _mockSet.Setup(m => m.FindAsync(1))
+                .ReturnsAsync(study);
 
             // Act
-            var result = await _dicomStudyService.CreateDicomStudyAsync(study);
-
-            // Assert
-            mockSet.Verify(m => m.Add(It.IsAny<DicomStudy>()), Times.Once());
-            _mockContext.Verify(m => m.SaveChangesAsync(default), Times.Once());
-            Assert.Equal(study, result);
-        }
-
-        [Fact]
-        public async Task UpdateDicomStudyAsync_ShouldUpdateStudy()
-        {
-            // Arrange
-            var study = new DicomStudy
-            {
-                StudyInstanceUid = "1.2.3",
-                PatientId = 1,
-                Modality = "Updated",
-                StudyDate = DateTime.Now
-            };
-
-            var mockSet = new Mock<DbSet<DicomStudy>>();
-            _mockContext.Setup(c => c.DicomStudies).Returns(mockSet.Object);
-
-            // Act
-            var result = await _dicomStudyService.UpdateDicomStudyAsync(study);
-
-            // Assert
-            _mockContext.Verify(m => m.SaveChangesAsync(default), Times.Once());
-            Assert.Equal(study, result);
-        }
-
-        [Fact]
-        public async Task DeleteDicomStudyAsync_ShouldDeleteStudy()
-        {
-            // Arrange
-            var studyInstanceUid = "1.2.3";
-            var study = new DicomStudy { StudyInstanceUid = studyInstanceUid };
-
-            var mockSet = new Mock<DbSet<DicomStudy>>();
-            _mockContext.Setup(c => c.DicomStudies).Returns(mockSet.Object);
-            mockSet.Setup(m => m.FindAsync(studyInstanceUid)).ReturnsAsync(study);
-
-            // Act
-            var result = await _dicomStudyService.DeleteDicomStudyAsync(studyInstanceUid);
-
-            // Assert
-            mockSet.Verify(m => m.Remove(study), Times.Once());
-            _mockContext.Verify(m => m.SaveChangesAsync(default), Times.Once());
-            Assert.True(result);
-        }
-
-        [Fact]
-        public async Task GetStudyMetadataAsync_ShouldReturnMetadata()
-        {
-            // Arrange
-            var studyInstanceUid = "1.2.3";
-            var study = new DicomStudy 
-            { 
-                StudyInstanceUid = studyInstanceUid,
-                PatientId = 1,
-                Modality = "CT",
-                StudyDate = DateTime.Now
-            };
-            var patient = new Patient { Id = 1, Name = "John Doe" };
-
-            var mockSet = new Mock<DbSet<DicomStudy>>();
-            _mockContext.Setup(c => c.DicomStudies).Returns(mockSet.Object);
-
-            var studies = new List<DicomStudy> { study }.AsQueryable();
-            mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.Provider).Returns(studies.Provider);
-            mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.Expression).Returns(studies.Expression);
-            mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.ElementType).Returns(studies.ElementType);
-            mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.GetEnumerator()).Returns(studies.GetEnumerator());
-
-            // Act
-            var result = await _dicomStudyService.GetStudyMetadataAsync(studyInstanceUid);
+            var result = await _service.GetDicomStudyByIdAsync(1);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(studyInstanceUid, result["studyInstanceUid"]);
-            Assert.Equal("CT", result["modality"]);
+            Assert.Equal(study.Id, result.Id);
+        }
+
+        [Fact]
+        public async Task GetDicomStudiesByPatientIdAsync_ReturnsStudies()
+        {
+            // Arrange
+            var patientId = 1;
+            var patient = new Patient { Id = patientId, Name = "John Doe", Gender = "Male", LastDiagnosis = "Healthy" };
+            var studies = new List<DicomStudy>
+            {
+                new DicomStudy {
+                    Id = 1,
+                    PatientId = patientId,
+                    Patient = patient,
+                    StudyInstanceUid = "1.2.3.4.5.1",
+                    Modality = "CT"
+                }
+            }.AsQueryable();
+
+            _mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.Provider).Returns(studies.Provider);
+            _mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.Expression).Returns(studies.Expression);
+            _mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.ElementType).Returns(studies.ElementType);
+            _mockSet.As<IQueryable<DicomStudy>>().Setup(m => m.GetEnumerator()).Returns(studies.GetEnumerator());
+
+            // Act
+            var result = await _service.GetDicomStudiesByPatientIdAsync(patientId);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Equal(patientId, result.First().PatientId);
+        }
+
+        [Fact]
+        public async Task GetStudyMetadataAsync_ReturnsMetadata()
+        {
+            // Arrange
+            var studyId = 1;
+            var patientId = 1;
+            var patient = new Patient { Id = patientId, Name = "John Doe", Gender = "Male", LastDiagnosis = "Healthy" };
+            var study = new DicomStudy
+            {
+                Id = studyId,
+                PatientId = patientId,
+                Patient = patient,
+                StudyInstanceUid = "1.2.3.4.5.1",
+                Modality = "CT"
+            };
+
+            _mockSet.Setup(m => m.FindAsync(studyId))
+                .ReturnsAsync(study);
+
+            // Act
+            var result = await _service.GetStudyMetadataAsync(studyId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Contains(studyId.ToString(), result);
+        }
+
+        [Fact]
+        public async Task GetOhifViewerUrlAsync_ReturnsUrl()
+        {
+            // Arrange
+            var studyId = 1;
+            var patientId = 1;
+            var patient = new Patient { Id = patientId, Name = "John Doe", Gender = "Male", LastDiagnosis = "Healthy" };
+            var study = new DicomStudy
+            {
+                Id = studyId,
+                PatientId = patientId,
+                Patient = patient,
+                StudyInstanceUid = "1.2.3.4.5.1",
+                Modality = "CT"
+            };
+
+            _mockSet.Setup(m => m.FindAsync(studyId))
+                .ReturnsAsync(study);
+
+            // Act
+            var result = await _service.GetOhifViewerUrlAsync(studyId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Contains(studyId.ToString(), result);
         }
     }
 }

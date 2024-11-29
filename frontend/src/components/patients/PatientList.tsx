@@ -30,16 +30,28 @@ const PatientList: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Name
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Date of Birth
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Gender
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Last Diagnosis
                   </th>
                   <th scope="col" className="relative px-6 py-3">
@@ -76,7 +88,7 @@ const PatientList: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
                           router.push(`/patients/${patient.id}/edit`);
                         }}
@@ -119,20 +131,19 @@ const PatientList: React.FC = () => {
           <div>
             <p className="text-sm text-gray-700">
               Showing{' '}
-              <span className="font-medium">
-                {((page - 1) * pageSize) + 1}
-              </span>{' '}
+              <span className="font-medium">{(page - 1) * pageSize + 1}</span>{' '}
               to{' '}
               <span className="font-medium">
                 {Math.min(page * pageSize, data?.total || 0)}
               </span>{' '}
-              of{' '}
-              <span className="font-medium">{data?.total}</span>{' '}
-              results
+              of <span className="font-medium">{data?.total}</span> results
             </p>
           </div>
           <div>
-            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <nav
+              className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+              aria-label="Pagination"
+            >
               <button
                 onClick={() => setPage(old => Math.max(old - 1, 1))}
                 disabled={page === 1}

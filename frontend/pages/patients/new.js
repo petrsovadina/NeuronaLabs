@@ -1,27 +1,27 @@
-import { useState } from 'react'
-import Head from 'next/head'
-import { useRouter } from 'next/router'
-import { useSupabaseClient } from '@supabase/auth-helpers-react'
-import PatientForm from '../../components/PatientForm'
+import { useState } from 'react';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import PatientForm from '../../components/PatientForm';
 
 export default function NewPatient() {
-  const [error, setError] = useState(null)
-  const router = useRouter()
-  const supabase = useSupabaseClient()
+  const [error, setError] = useState(null);
+  const router = useRouter();
+  const supabase = useSupabaseClient();
 
-  const handleSubmit = async (patientData) => {
+  const handleSubmit = async patientData => {
     try {
       const { data, error } = await supabase
         .from('patients')
-        .insert([patientData])
-      
-      if (error) throw error
+        .insert([patientData]);
 
-      router.push('/patients')
+      if (error) throw error;
+
+      router.push('/patients');
     } catch (error) {
-      setError(error.message)
+      setError(error.message);
     }
-  }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -33,6 +33,5 @@ export default function NewPatient() {
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <PatientForm onSubmit={handleSubmit} />
     </div>
-  )
+  );
 }
-

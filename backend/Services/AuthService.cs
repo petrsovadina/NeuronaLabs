@@ -10,7 +10,7 @@ using BC = BCrypt.Net.BCrypt;
 
 namespace NeuronaLabs.Services
 {
-    public class AuthService 
+    public class AuthService : IAuthService
     {
         private readonly NeuronaLabsContext _context;
         private readonly IConfiguration _configuration;
@@ -23,6 +23,12 @@ namespace NeuronaLabs.Services
 
         public async Task<string> AuthenticateAsync(string username, string password)
         {
+            if (string.IsNullOrEmpty(username))
+                throw new ArgumentException("Username cannot be empty", nameof(username));
+            
+            if (string.IsNullOrEmpty(password))
+                throw new ArgumentException("Password cannot be empty", nameof(password));
+
             var user = await _context.Users.FirstOrDefaultAsync(x => x.Username == username);
 
             if (user == null || !BC.Verify(password, user.PasswordHash))
@@ -84,7 +90,8 @@ namespace NeuronaLabs.Services
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Name, user.Username),
-                    new Claim(ClaimTypes.Email, user.Email ?? string.Empty)
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role ?? "user")
                 }),
                 Expires = DateTime.UtcNow.AddDays(7),
                 SigningCredentials = new SigningCredentials(
