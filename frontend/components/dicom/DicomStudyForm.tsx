@@ -1,8 +1,4 @@
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Form,
   FormControl,
@@ -11,12 +7,18 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { DicomStudy, DicomStudyFormData } from '@/types/dicom';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 const formSchema = z.object({
   patientId: z.string().min(1, { message: 'ID pacienta je povinné' }),
-  studyInstanceUID: z.string().min(1, { message: 'Study Instance UID je povinné' }),
+  studyInstanceUID: z
+    .string()
+    .min(1, { message: 'Study Instance UID je povinné' }),
   studyDate: z.string().optional(),
   studyDescription: z.string().optional(),
   modality: z.string().optional(),
@@ -29,7 +31,10 @@ interface DicomStudyFormProps {
   onSubmit: (data: DicomStudyFormData) => Promise<void>;
 }
 
-export default function DicomStudyForm({ dicomStudy, onSubmit }: DicomStudyFormProps) {
+export default function DicomStudyForm({
+  dicomStudy,
+  onSubmit,
+}: DicomStudyFormProps) {
   const { toast } = useToast();
   const form = useForm<DicomStudyFormData>({
     resolver: zodResolver(formSchema),
@@ -49,8 +54,8 @@ export default function DicomStudyForm({ dicomStudy, onSubmit }: DicomStudyFormP
       await onSubmit(values);
       toast({
         title: 'Úspěch',
-        description: dicomStudy 
-          ? 'DICOM studie byla úspěšně aktualizována' 
+        description: dicomStudy
+          ? 'DICOM studie byla úspěšně aktualizována'
           : 'Nová DICOM studie byla úspěšně přidána',
       });
     } catch (error) {
@@ -142,10 +147,14 @@ export default function DicomStudyForm({ dicomStudy, onSubmit }: DicomStudyFormP
             <FormItem>
               <FormLabel>Počet sérií</FormLabel>
               <FormControl>
-                <Input 
-                  type="number" 
-                  {...field} 
-                  onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                <Input
+                  type="number"
+                  {...field}
+                  onChange={e =>
+                    field.onChange(
+                      e.target.value ? parseInt(e.target.value) : undefined
+                    )
+                  }
                 />
               </FormControl>
               <FormMessage />
@@ -160,10 +169,14 @@ export default function DicomStudyForm({ dicomStudy, onSubmit }: DicomStudyFormP
             <FormItem>
               <FormLabel>Počet instancí</FormLabel>
               <FormControl>
-                <Input 
-                  type="number" 
+                <Input
+                  type="number"
                   {...field}
-                  onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                  onChange={e =>
+                    field.onChange(
+                      e.target.value ? parseInt(e.target.value) : undefined
+                    )
+                  }
                 />
               </FormControl>
               <FormMessage />

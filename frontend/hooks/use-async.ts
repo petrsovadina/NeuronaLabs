@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useCallback, useState } from 'react';
 
 interface UseAsyncOptions {
   showSuccessToast?: boolean;
@@ -32,7 +32,7 @@ export function useAsync<T>(
       setError(null);
       const result = await asyncFunction();
       setData(result);
-      
+
       if (showSuccessToast) {
         toast({
           title: 'Úspěch',
@@ -43,9 +43,10 @@ export function useAsync<T>(
       onSuccess?.(result);
       return result;
     } catch (e) {
-      const error = e instanceof Error ? e : new Error('Došlo k neočekávané chybě');
+      const error =
+        e instanceof Error ? e : new Error('Došlo k neočekávané chybě');
       setError(error);
-      
+
       if (showErrorToast) {
         toast({
           variant: 'destructive',
@@ -59,7 +60,15 @@ export function useAsync<T>(
     } finally {
       setLoading(false);
     }
-  }, [asyncFunction, showSuccessToast, showErrorToast, successMessage, onSuccess, onError, toast]);
+  }, [
+    asyncFunction,
+    showSuccessToast,
+    showErrorToast,
+    successMessage,
+    onSuccess,
+    onError,
+    toast,
+  ]);
 
   return {
     execute,

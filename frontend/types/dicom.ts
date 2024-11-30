@@ -11,4 +11,7 @@ export interface DicomStudy {
   updatedAt?: string;
 }
 
-export type DicomStudyFormData = Omit<DicomStudy, 'id' | 'createdAt' | 'updatedAt'>;
+export type DicomStudyFormData = Omit<
+  DicomStudy,
+  'id' | 'createdAt' | 'updatedAt'
+>;

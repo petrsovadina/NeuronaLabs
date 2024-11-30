@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { ReactNode } from 'react';
 
 interface ContainerProps {
   children: ReactNode;
@@ -15,13 +15,19 @@ const sizeClasses = {
   '2xl': 'max-w-screen-2xl',
 };
 
-export function Container({ children, className, size = 'lg' }: ContainerProps) {
+export function Container({
+  children,
+  className,
+  size = 'lg',
+}: ContainerProps) {
   return (
-    <div className={cn(
-      'mx-auto w-full px-4 sm:px-6 lg:px-8',
-      sizeClasses[size],
-      className
-    )}>
+    <div
+      className={cn(
+        'mx-auto w-full px-4 sm:px-6 lg:px-8',
+        sizeClasses[size],
+        className
+      )}
+    >
       {children}
     </div>
   );

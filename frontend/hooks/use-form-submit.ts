@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ApiError } from '@/types/api';
+import { useState } from 'react';
 
 interface UseFormSubmitOptions<T> {
   onSuccess?: (data: T) => void;
@@ -26,7 +26,7 @@ export function useFormSubmit<T, D = unknown>(
     try {
       setLoading(true);
       const result = await submitFn(formData);
-      
+
       toast({
         title: 'Úspěch',
         description: successMessage,
@@ -35,8 +35,9 @@ export function useFormSubmit<T, D = unknown>(
       onSuccess?.(result);
       return result;
     } catch (e) {
-      const error = e instanceof Error ? e : new Error('Došlo k neočekávané chybě');
-      
+      const error =
+        e instanceof Error ? e : new Error('Došlo k neočekávané chybě');
+
       toast({
         variant: 'destructive',
         title: 'Chyba',

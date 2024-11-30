@@ -3,11 +3,15 @@ import { Database } from './database.types';
 
 // Bezpečnostní kontrola proměnných prostředí
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set in environment variables');
+  throw new Error(
+    'NEXT_PUBLIC_SUPABASE_URL is not set in environment variables'
+  );
 }
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set in environment variables');
+  throw new Error(
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY is not set in environment variables'
+  );
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -40,7 +44,9 @@ export const authHelpers = {
 
       if (error) {
         if (error.message === 'Email not confirmed') {
-          throw new Error('Prosím potvrďte svůj email kliknutím na odkaz, který jsme vám zaslali.');
+          throw new Error(
+            'Prosím potvrďte svůj email kliknutím na odkaz, který jsme vám zaslali.'
+          );
         }
         throw error;
       }

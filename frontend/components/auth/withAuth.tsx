@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 
 export function withAuth<P extends object>(
   WrappedComponent: React.ComponentType<P>,

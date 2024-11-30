@@ -1,0 +1,296 @@
+type Doctor {
+  id: ID!
+  firstName: String!
+  lastName: String!
+  email: String!
+  phone: String
+  role: DoctorRole!
+  specialization: String
+  licenseNumber: String!
+  institution: String
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Patient {
+  id: ID!
+  firstName: String!
+  lastName: String!
+  birthDate: DateTime!
+  personalId: String!
+  gender: Gender!
+  email: String
+  phone: String
+  address: String
+  insuranceNumber: String
+  insuranceProvider: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: Doctor!
+  studies: [DicomStudy!]!
+  diagnoses: [Diagnosis!]!
+}
+
+type DicomStudy {
+  id: ID!
+  patient: Patient!
+  doctor: Doctor!
+  dicomUid: String!
+  modality: Modality!
+  studyDate: DateTime!
+  accessionNumber: String
+  studyDescription: String
+  status: StudyStatus!
+  folderPath: String!
+  numberOfImages: Int!
+  studySize: Int!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  series: [DicomSeries!]!
+  diagnoses: [Diagnosis!]!
+  notes: [StudyNote!]!
+}
+
+type DicomSeries {
+  id: ID!
+  study: DicomStudy!
+  seriesUid: String!
+  seriesNumber: Int
+  seriesDescription: String
+  modality: Modality!
+  numberOfImages: Int!
+  folderPath: String!
+  metadata: JSON
+  createdAt: DateTime!
+  instances: [DicomInstance!]!
+}
+
+type DicomInstance {
+  id: ID!
+  series: DicomSeries!
+  instanceUid: String!
+  instanceNumber: Int
+  filePath: String!
+  fileSize: Int!
+  metadata: JSON
+  createdAt: DateTime!
+}
+
+type Diagnosis {
+  id: ID!
+  study: DicomStudy!
+  doctor: Doctor!
+  diagnosisText: String!
+  findings: String
+  recommendations: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type StudyNote {
+  id: ID!
+  study: DicomStudy!
+  doctor: Doctor!
+  noteText: String!
+  isPrivate: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type AuditLog {
+  id: ID!
+  doctor: Doctor!
+  action: String!
+  entityType: String!
+  entityId: ID!
+  details: JSON
+  ipAddress: String
+  createdAt: DateTime!
+}
+
+enum DoctorRole {
+  DOCTOR
+  ADMIN
+  RESEARCHER
+}
+
+enum Gender {
+  M
+  F
+  O
+}
+
+enum Modality {
+  CT
+  MRI
+  PET
+  XRAY
+  ULTRASOUND
+}
+
+enum StudyStatus {
+  NEW
+  IN_PROGRESS
+  DIAGNOSED
+  ARCHIVED
+}
+
+type Query {
+  # Pacienti
+  patients(
+    search: String
+    offset: Int
+    limit: Int
+    orderBy: PatientOrderBy
+  ): [Patient!]!
+  
+  patient(id: ID!): Patient
+  
+  # DICOM Studie
+  studies(
+    patientId: ID
+    modality: Modality
+    status: StudyStatus
+    fromDate: DateTime
+    toDate: DateTime
+    offset: Int
+    limit: Int
+    orderBy: StudyOrderBy
+  ): [DicomStudy!]!
+  
+  study(id: ID!): DicomStudy
+  
+  # Lékaři
+  doctors(
+    search: String
+    role: DoctorRole
+    specialization: String
+    offset: Int
+    limit: Int
+  ): [Doctor!]!
+  
+  doctor(id: ID!): Doctor
+  currentDoctor: Doctor!
+  
+  # Audit
+  auditLogs(
+    doctorId: ID
+    entityType: String
+    entityId: ID
+    fromDate: DateTime
+    toDate: DateTime
+    limit: Int
+  ): [AuditLog!]!
+}
+
+type Mutation {
+  # Pacienti
+  createPatient(input: CreatePatientInput!): Patient!
+  updatePatient(id: ID!, input: UpdatePatientInput!): Patient!
+  
+  # DICOM Studie
+  createStudy(input: CreateStudyInput!): DicomStudy!
+  updateStudy(id: ID!, input: UpdateStudyInput!): DicomStudy!
+  updateStudyStatus(id: ID!, status: StudyStatus!): DicomStudy!
+  
+  # Diagnózy
+  createDiagnosis(input: CreateDiagnosisInput!): Diagnosis!
+  updateDiagnosis(id: ID!, input: UpdateDiagnosisInput!): Diagnosis!
+  
+  # Poznámky
+  createStudyNote(input: CreateStudyNoteInput!): StudyNote!
+  updateStudyNote(id: ID!, input: UpdateStudyNoteInput!): StudyNote!
+  deleteStudyNote(id: ID!): Boolean!
+}
+
+input CreatePatientInput {
+  firstName: String!
+  lastName: String!
+  birthDate: DateTime!
+  personalId: String!
+  gender: Gender!
+  email: String
+  phone: String
+  address: String
+  insuranceNumber: String
+  insuranceProvider: String
+}
+
+input UpdatePatientInput {
+  firstName: String
+  lastName: String
+  email: String
+  phone: String
+  address: String
+  insuranceNumber: String
+  insuranceProvider: String
+}
+
+input CreateStudyInput {
+  patientId: ID!
+  dicomUid: String!
+  modality: Modality!
+  studyDate: DateTime!
+  accessionNumber: String
+  studyDescription: String
+  metadata: JSON
+}
+
+input UpdateStudyInput {
+  studyDescription: String
+  metadata: JSON
+}
+
+input CreateDiagnosisInput {
+  studyId: ID!
+  diagnosisText: String!
+  findings: String
+  recommendations: String
+}
+
+input UpdateDiagnosisInput {
+  diagnosisText: String
+  findings: String
+  recommendations: String
+}
+
+input CreateStudyNoteInput {
+  studyId: ID!
+  noteText: String!
+  isPrivate: Boolean!
+}
+
+input UpdateStudyNoteInput {
+  noteText: String!
+  isPrivate: Boolean
+}
+
+input PatientOrderBy {
+  field: PatientOrderField!
+  direction: OrderDirection!
+}
+
+input StudyOrderBy {
+  field: StudyOrderField!
+  direction: OrderDirection!
+}
+
+enum PatientOrderField {
+  LAST_NAME
+  CREATED_AT
+}
+
+enum StudyOrderField {
+  STUDY_DATE
+  CREATED_AT
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+scalar DateTime
+scalar JSON

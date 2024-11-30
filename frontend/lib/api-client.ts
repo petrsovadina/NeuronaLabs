@@ -1,4 +1,9 @@
-import { ApiResponse, ApiError, PaginationParams, FilterParams } from '@/types/api';
+import {
+  ApiError,
+  ApiResponse,
+  FilterParams,
+  PaginationParams,
+} from '@/types/api';
 import { supabase } from './supabase/client';
 
 class ApiClient {
@@ -8,27 +13,27 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  private async getAuthHeaders(): Promise<HeadersInit> {
+  private async getAuthHeaders() {
     const { data: { session } } = await supabase.auth.getSession();
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session?.access_token || ''}`,
+      Authorization: `Bearer ${session?.access_token || ''}`,
     };
   }
 
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  private async handleResponse(response) {
     if (!response.ok) {
       if (response.status === 401) {
         // Automatické přesměrování na login při vypršení session
         window.location.href = `/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
       }
-      const error = await response.json() as ApiError;
+      const error = await response.json();
       throw new Error(error.message || 'An error occurred');
     }
-    return response.json() as Promise<ApiResponse<T>>;
+    return response.json();
   }
 
-  private buildUrl(endpoint: string, params?: Record<string, string | number | undefined>): string {
+  private buildUrl(endpoint, params) {
     const url = new URL(this.baseUrl + endpoint, window.location.origin);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -40,42 +45,39 @@ class ApiClient {
     return url.toString();
   }
 
-  async get<T>(
-    endpoint: string,
-    params?: PaginationParams & FilterParams
-  ): Promise<ApiResponse<T>> {
+  async get(endpoint, params) {
     const headers = await this.getAuthHeaders();
     const response = await fetch(this.buildUrl(endpoint, params), { headers });
-    return this.handleResponse<T>(response);
+    return this.handleResponse(response);
   }
 
-  async post<T>(endpoint: string, data: unknown): Promise<ApiResponse<T>> {
+  async post(endpoint, data) {
     const headers = await this.getAuthHeaders();
     const response = await fetch(this.buildUrl(endpoint), {
       method: 'POST',
       headers,
       body: JSON.stringify(data),
     });
-    return this.handleResponse<T>(response);
+    return this.handleResponse(response);
   }
 
-  async put<T>(endpoint: string, data: unknown): Promise<ApiResponse<T>> {
+  async put(endpoint, data) {
     const headers = await this.getAuthHeaders();
     const response = await fetch(this.buildUrl(endpoint), {
       method: 'PUT',
       headers,
       body: JSON.stringify(data),
     });
-    return this.handleResponse<T>(response);
+    return this.handleResponse(response);
   }
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+  async delete(endpoint) {
     const headers = await this.getAuthHeaders();
     const response = await fetch(this.buildUrl(endpoint), {
       method: 'DELETE',
       headers,
     });
-    return this.handleResponse<T>(response);
+    return this.handleResponse(response);
   }
 }
 

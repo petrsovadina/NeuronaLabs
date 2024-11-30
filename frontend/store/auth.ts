@@ -1,34 +1,36 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { User } from '@supabase/supabase-js'
+import { User } from '@supabase/supabase-js';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-  setUser: (user: User | null) => void
-  clearUser: () => void
+  user: User | null;
+  isAuthenticated: boolean;
+  setUser: (user: User | null) => void;
+  clearUser: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    set => ({
       user: null,
       isAuthenticated: false,
-      setUser: (user) => set({ 
-        user, 
-        isAuthenticated: !!user 
-      }),
-      clearUser: () => set({ 
-        user: null, 
-        isAuthenticated: false 
-      })
+      setUser: user =>
+        set({
+          user,
+          isAuthenticated: !!user,
+        }),
+      clearUser: () =>
+        set({
+          user: null,
+          isAuthenticated: false,
+        }),
     }),
     {
       name: 'neuronalabs-auth-storage',
-      partialize: (state) => ({
+      partialize: state => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated
-      })
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
-)
+);

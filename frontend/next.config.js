@@ -6,10 +6,28 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  images: {
-    domains: ['localhost'],
+  experimental: {
+    reactCompiler: true,
+    serverActions: {
+      allowedOrigins: ['localhost:3000'],
+    },
+    optimizePackageImports: ['@radix-ui', 'lucide-react'],
   },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
+  reactStrictMode: true,
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -27,12 +45,16 @@ const nextConfig = {
       },
     ];
   },
-  webpack(config) {
+  webpack: (config) => {
     config.module.rules.push({
       test: /\.svg$/,
       use: ['@svgr/webpack'],
     });
-
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': __dirname,
+    };
+    config.experiments = { ...config.experiments, topLevelAwait: true };
     return config;
   },
 };

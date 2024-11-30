@@ -9,7 +9,12 @@
     "create-migration": "ts-node scripts/create-migration.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.21.0"
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@supabase/supabase-js": "^2.21.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

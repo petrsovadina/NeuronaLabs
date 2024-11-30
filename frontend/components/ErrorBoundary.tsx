@@ -1,7 +1,7 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { RefreshCw, RotateCcw } from 'lucide-react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -15,7 +15,7 @@ interface State {
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
-    hasError: false
+    hasError: false,
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -49,15 +49,15 @@ export class ErrorBoundary extends Component<Props, State> {
               </AlertDescription>
             </Alert>
             <div className="flex justify-center gap-4">
-              <Button 
+              <Button
                 onClick={() => window.location.reload()}
                 className="gap-2"
               >
                 <RefreshCw className="h-4 w-4" />
                 Obnovit stránku
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={this.handleReset}
                 className="gap-2"
               >

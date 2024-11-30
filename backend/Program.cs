@@ -6,6 +6,7 @@ using NeuronaLabs.GraphQL;
 using NeuronaLabs.Services;
 using NeuronaLabs.Middleware;
 using NeuronaLabs.GraphQL.Authorization;
+using NeuronaLabs.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -15,6 +16,25 @@ using NeuronaLabs.HealthChecks;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Load environment variables
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+// Configuration
+builder.Services.Configure<SupabaseOptions>(options =>
+{
+    options.Url = Environment.GetEnvironmentVariable("NEXT_PUBLIC_SUPABASE_URL") ?? 
+        builder.Configuration["Supabase:Url"];
+    options.ServiceKey = Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY") ?? 
+        builder.Configuration["Supabase:ServiceKey"];
+    options.AnonKey = Environment.GetEnvironmentVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY") ?? 
+        builder.Configuration["Supabase:AnonKey"];
+});
 
 // Database
 builder.Services.AddDbContext<NeuronaLabsContext>(options =>
@@ -58,7 +78,8 @@ builder.Services.AddResponseCompression(options =>
 });
 
 // CORS
-var corsOrigins = builder.Configuration["CORS:AllowedOrigins"]?.Split(',') ?? Array.Empty<string>();
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? 
+    Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowedOrigins", policy =>
@@ -87,6 +108,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IDiagnosticDataService, DiagnosticDataService>();
 builder.Services.AddScoped<IDicomStudyService, DicomStudyService>();
+builder.Services.AddScoped<ISupabaseService, SupabaseService>();
 
 // Add logging
 builder.Logging.ClearProviders();
@@ -111,6 +133,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseResponseCompression();
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+
 app.UseCors("AllowedOrigins");
 
 app.UseAuthentication();
@@ -119,10 +145,7 @@ app.UseAuthorization();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// GraphQL endpoint
 app.MapGraphQL();
-
-// Add health check endpoint
 app.MapHealthChecks("/health");
 
 // Ensure database is created and migrations are applied

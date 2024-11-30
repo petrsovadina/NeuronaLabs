@@ -1,173 +1,205 @@
-import React, { useState } from 'react';
+'use client';
+
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/router';
-import Link from 'next/link';
-
+import { RegisterSchema } from '@/lib/validation';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   Form, 
   FormControl, 
-  FormDescription, 
   FormField, 
   FormItem, 
   FormLabel, 
   FormMessage 
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { registerSchema, RegisterInput } from '@/lib/validation/auth';
-import { authHelpers } from '@/lib/supabase/authHelpers';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 
-export default function RegisterForm() {
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  const router = useRouter();
+type RegisterFormData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
 
-  const form = useForm<RegisterInput>({
-    resolver: zodResolver(registerSchema),
+export function RegisterForm() {
+  const { register } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const form = useForm<RegisterFormData>({
+    resolver: zodResolver(RegisterSchema),
     defaultValues: {
+      firstName: '',
+      lastName: '',
       email: '',
       password: '',
       confirmPassword: ''
     }
   });
 
-  const onSubmit = async (data: RegisterInput) => {
-    setIsLoading(true);
-
+  const onSubmit = async (data: RegisterFormData) => {
     try {
-      const { error } = await authHelpers.signUp(data.email, data.password);
+      setError(null);
+      setSuccess(null);
 
-      if (error) {
-        toast({
-          title: "Chyba registrace",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Registrace úspěšná",
-          description: "Byl vám zaslán ověřovací email",
-        });
-        router.push('/login');
-      }
+      // Příprava metadat uživatele
+      const metadata = {
+        firstName: data.firstName,
+        lastName: data.lastName
+      };
+
+      await register(data.email, data.password, metadata);
+      
+      setSuccess('Registrace úspěšná. Zkontrolujte svůj email pro ověření.');
     } catch (err) {
-      toast({
-        title: "Neočekávaná chyba",
-        description: "Došlo k chybě při registraci",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      setError(
+        err instanceof Error 
+          ? err.message 
+          : 'Nastala neočekávaná chyba při registraci'
+      );
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Registrace</CardTitle>
-          <CardDescription>
-            Vytvořte si nový účet v systému NeuronaLabs
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="vas@email.cz" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Heslo</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="********" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Potvrzení hesla</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="********" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Accordion type="single" collapsible>
-                <AccordionItem value="password-rules">
-                  <AccordionTrigger>Pravidla pro heslo</AccordionTrigger>
-                  <AccordionContent>
-                    <ul className="list-disc pl-5 text-sm text-gray-600">
-                      <li>Minimálně 8 znaků</li>
-                      <li>Alespoň jedno velké písmeno</li>
-                      <li>Alespoň jedno malé písmeno</li>
-                      <li>Alespoň jedna číslice</li>
-                      <li>Alespoň jeden speciální znak</li>
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isLoading}
-              >
-                {isLoading ? 'Registrace...' : 'Zaregistrovat se'}
-              </Button>
-
-              <div className="text-center mt-4">
-                <p className="text-sm text-gray-600">
-                  Již máte účet?{' '}
-                  <Link 
-                    href="/login" 
-                    className="font-medium text-primary hover:text-primary-dark"
-                  >
-                    Přihlaste se
-                  </Link>
-                </p>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>Registrace</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form 
+            onSubmit={form.handleSubmit(onSubmit)} 
+            className="space-y-4"
+          >
+            {error && (
+              <div className="bg-red-100 text-red-600 p-3 rounded">
+                {error}
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+            )}
+
+            {success && (
+              <div className="bg-green-100 text-green-600 p-3 rounded">
+                {success}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jméno</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Vaše jméno" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Příjmení</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Vaše příjmení" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="email" 
+                      placeholder="vas@email.cz" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Heslo</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="password" 
+                      placeholder="********" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Potvrzení hesla</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="password" 
+                      placeholder="********" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? 'Registrace...' : 'Zaregistrovat se'}
+            </Button>
+
+            <div className="text-center mt-4">
+              <p className="text-sm text-gray-600">
+                Již máte účet?{' '}
+                <Link 
+                  href="/login" 
+                  className="text-blue-600 hover:underline"
+                >
+                  Přihlaste se
+                </Link>
+              </p>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }

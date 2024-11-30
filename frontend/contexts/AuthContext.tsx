@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '@/lib/supabase/client';
-import { authHelpers } from '@/lib/supabase/authHelpers';
-import { AuthContextType, AuthSession, UserProfile } from '@/types/auth';
 import { useToast } from '@/hooks/use-toast';
+import { authHelpers } from '@/lib/supabase/authHelpers';
+import { supabase } from '@/lib/supabase/client';
+import { AuthContextType, AuthSession, UserProfile } from '@/types/auth';
+import { useRouter } from 'next/router';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -24,39 +24,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: { session: initialSession },
         } = await supabase.auth.getSession();
 
-        setSession(initialSession ? {
-          user: initialSession.user,
-          accessToken: initialSession.access_token,
-        } : null);
+        setSession(
+          initialSession
+            ? {
+                user: initialSession.user,
+                accessToken: initialSession.access_token,
+              }
+            : null
+        );
 
         // Nastavení posluchače pro změny v autentizaci
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, currentSession) => {
-            setSession(currentSession ? {
-              user: currentSession.user,
-              accessToken: currentSession.access_token,
-            } : null);
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+          setSession(
+            currentSession
+              ? {
+                  user: currentSession.user,
+                  accessToken: currentSession.access_token,
+                }
+              : null
+          );
 
-            if (event === 'SIGNED_IN') {
-              toast({
-                title: 'Přihlášení úspěšné',
-                description: 'Vítejte zpět!',
-              });
-            } else if (event === 'SIGNED_OUT') {
-              toast({
-                title: 'Odhlášení úspěšné',
-                description: 'Nashledanou!',
-              });
-            }
+          if (event === 'SIGNED_IN') {
+            toast({
+              title: 'Přihlášení úspěšné',
+              description: 'Vítejte zpět!',
+            });
+          } else if (event === 'SIGNED_OUT') {
+            toast({
+              title: 'Odhlášení úspěšné',
+              description: 'Nashledanou!',
+            });
           }
-        );
+        });
 
         return () => {
           subscription.unsubscribe();
         };
       } catch (error) {
         console.error('Error initializing auth:', error);
-        setError(error instanceof Error ? error : new Error('Failed to initialize auth'));
+        setError(
+          error instanceof Error
+            ? error
+            : new Error('Failed to initialize auth')
+        );
       } finally {
         setLoading(false);
       }
@@ -120,7 +132,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authHelpers.signOut();
       router.push('/login');
     } catch (error) {
-      setError(error instanceof Error ? error : new Error('Failed to sign out'));
+      setError(
+        error instanceof Error ? error : new Error('Failed to sign out')
+      );
       throw error;
     } finally {
       setLoading(false);
@@ -137,7 +151,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: 'Pokyny k resetování hesla byly odeslány na váš email.',
       });
     } catch (error) {
-      setError(error instanceof Error ? error : new Error('Failed to reset password'));
+      setError(
+        error instanceof Error ? error : new Error('Failed to reset password')
+      );
       throw error;
     } finally {
       setLoading(false);

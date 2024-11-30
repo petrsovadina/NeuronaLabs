@@ -13,29 +13,30 @@ Platforma pro správu zdravotnických dat a DICOM snímků.
 ## Technický Stack
 
 ### Backend
-- .NET 6.0
+- .NET 8.0
 - GraphQL (HotChocolate)
+- Supabase (Auth, Storage, Realtime)
 - PostgreSQL
-- Entity Framework Core
-- Supabase
 
 ### Frontend
-- React.js
-- OHIF Viewer
+- Next.js 14
+- OHIF Viewer v3
 - Tailwind CSS
-- GraphQL Client
+- GraphQL (Apollo Client)
+- Supabase JS Client
 
 ### Infrastruktura
 - Docker + Docker Compose
-- Nginx
-- PostgreSQL
+- Supabase Platform
+- Vercel (Frontend)
 
 ## Požadavky
 
 - .NET 8.0 SDK
-- Node.js 23+
-- Docker
-- PostgreSQL 13+
+- Node.js 18+ a npm
+- Docker Desktop
+- Supabase CLI
+- Git
 
 ## Rychlý start
 
@@ -45,50 +46,127 @@ git clone https://github.com/your-org/neuronalabs.git
 cd neuronalabs
 ```
 
-2. Nastavení prostředí:
+2. Instalace Supabase CLI (pokud není nainstalováno):
 ```bash
-cp .env.example .env
-# Upravte .env soubor podle vašich potřeb
+# macOS
+brew install supabase/tap/supabase
+
+# Windows (přes scoop)
+scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+scoop install supabase
 ```
 
-3. Spuštění aplikace:
+3. Nastavení prostředí:
 ```bash
-docker-compose up
+cp .env.example .env
+# Upravte .env soubor s vašimi Supabase credentials
+```
+
+4. Inicializace Supabase projektu:
+```bash
+./scripts/init-supabase.sh
+```
+
+5. Spuštění aplikace:
+```bash
+# Backend
+cd backend
+dotnet run
+
+# Frontend (v novém terminálu)
+cd frontend
+npm install
+npm run dev
 ```
 
 Aplikace bude dostupná na:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:5000
 - GraphQL Playground: http://localhost:5000/graphql
+- Supabase Studio: http://localhost:54323/studio
 
 ## Struktura projektu
 
 ```
-├── backend/             # .NET Core backend
-├── frontend/           # React/Next.js frontend
-├── docs/              # Dokumentace
-├── scripts/           # Pomocné skripty
-└── docker/            # Docker konfigurace
+├── backend/           # .NET Backend
+│   ├── GraphQL/      # GraphQL schéma a resolvery
+│   ├── Models/       # Doménové modely
+│   └── Services/     # Byznys logika a služby
+├── frontend/         # Next.js Frontend
+│   ├── app/         # Next.js 14 App Router
+│   ├── components/  # React komponenty
+│   └── lib/         # Sdílené utility
+├── supabase/        # Supabase konfigurace
+│   ├── migrations/  # SQL migrace
+│   └── seed.sql     # Testovací data
+└── scripts/         # Pomocné skripty
 ```
 
-## Bezpečnost
+## Supabase Setup
 
-- JWT autentizace
-- HTTPS/SSL
-- Role-based access control
+### Lokální vývoj
+
+1. Spuštění lokálního Supabase:
+```bash
+supabase start
+```
+
+2. Aplikace migrací:
+```bash
+supabase db reset
+```
+
+3. Generování TypeScript typů:
+```bash
+supabase gen types typescript --local > ./frontend/types/supabase.ts
+```
+
+### Produkční nasazení
+
+1. Vytvoření nového projektu na Supabase:
+```bash
+supabase link --project-ref <project-id>
+```
+
+2. Push schématu do produkce:
+```bash
+supabase db push
+```
+
+## Autentizace a Bezpečnost
+
+- JWT autentizace přes Supabase Auth
+- Row Level Security (RLS) policies
+- RBAC (Role-Based Access Control)
 - Šifrování citlivých dat
-- Pravidelné security audity
+- Audit logy
 
-## Monitoring
+## Vývoj
 
-- Application Insights
-- Error tracking (Sentry)
-- Performance monitoring
-- Health checks
+### Backend
 
-## Deployment
+1. Spuštění API:
+```bash
+cd backend
+dotnet watch run
+```
 
-Detailní instrukce pro deployment jsou v `docs/deployment.md`
+2. Přístup ke GraphQL Playground:
+- http://localhost:5000/graphql
+
+### Frontend
+
+1. Spuštění vývojového serveru:
+```bash
+cd frontend
+npm run dev
+```
+
+2. Build pro produkci:
+```bash
+npm run build
+npm start
+```
 
 ## Testování
 
@@ -102,108 +180,55 @@ cd frontend
 npm test
 ```
 
+## Deployment
+
+### Frontend (Vercel)
+
+1. Push do GitHub
+2. Propojení s Vercel
+3. Nastavení environment variables
+
+### Backend
+
+Detailní instrukce v `docs/deployment.md`
+
+## Řešení problémů
+
+### Reset lokálního prostředí
+
+```bash
+# Stop a reset Supabase
+supabase stop
+supabase start --reset
+
+# Reset databáze
+supabase db reset
+```
+
+### Logy
+
+```bash
+# Supabase logy
+supabase logs
+
+# Backend logy
+dotnet run --launch-profile Development
+
+# Frontend logy
+npm run dev
+```
+
 ## Dokumentace
 
 - [Architektura](docs/architecture.md)
-- [Vývoj](docs/development.md)
-- [Nasazení](docs/deployment.md)
-- [Bezpečnost](docs/security.md)
-- API dokumentace
+- [API Reference](docs/api.md)
+- [Supabase Schema](docs/schema.md)
+- [Security](docs/security.md)
 
-## Lokální vývoj
+## Příspěvky
 
-### Příprava prostředí
-
-1. Nainstalujte všechny požadované nástroje:
-   - Docker Desktop
-   - .NET 8.0 SDK
-   - Node.js 23+
-   - Visual Studio Code nebo jiné IDE
-
-2. Nastavení proměnných prostředí:
-   ```bash
-   cp .env.example .env
-   # Upravte hodnoty v .env podle potřeby
-   ```
-
-3. Spuštění lokálního prostředí:
-   ```bash
-   # Spustí všechny potřebné služby
-   ./local-setup.sh
-   ```
-
-### Přístup k službám
-
-- Backend API: http://localhost:5000
-- Frontend: http://localhost:3000
-- Swagger dokumentace: http://localhost:5000/swagger
-- GraphQL Playground: http://localhost:5000/graphql
-- Health Check: http://localhost:5000/health
-
-### Vývoj
-
-1. Backend development:
-   ```bash
-   cd backend
-   dotnet watch run
-   ```
-
-2. Frontend development:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-### Testování
-
-1. Spuštění unit testů:
-   ```bash
-   cd backend
-   dotnet test
-   ```
-
-2. Spuštění E2E testů:
-   ```bash
-   cd frontend
-   npm run test:e2e
-   ```
-
-### Debugging
-
-1. Backend debugging:
-   - Otevřete solution v Visual Studio nebo VS Code
-   - Použijte integrovaný debugger
-   - Připojte se k běžícímu procesu přes port 5000
-
-2. Frontend debugging:
-   - Použijte Chrome DevTools
-   - React Developer Tools
-   - Vite Debug Tools
-
-### Řešení problémů
-
-1. Resetování lokálního prostředí:
-   ```bash
-   docker-compose down -v
-   docker-compose up --build
-   ```
-
-2. Vyčištění databáze:
-   ```bash
-   docker-compose down -v
-   ./local-setup.sh
-   ```
-
-3. Logování:
-   - Backend logy: `docker-compose logs -f backend`
-   - Frontend logy: `docker-compose logs -f frontend`
-   - Databázové logy: `docker-compose logs -f db`
-
-## Přispívání
-
-Viz `CONTRIBUTING.md` pro detaily jak přispívat do projektu.
+Viz [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Licence
 
-Copyright 2023 NeuronaLabs
+MIT

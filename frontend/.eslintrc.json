@@ -1,15 +1,17 @@
 {
   "extends": [
     "next/core-web-vitals",
-    "plugin:prettier/recommended"
+    "plugin:@typescript-eslint/recommended"
   ],
-  "plugins": [
-    "prettier"
-  ],
+  "plugins": ["@typescript-eslint"],
   "rules": {
-    "prettier/prettier": "error",
-    "@typescript-eslint/no-unused-vars": "warn",
     "@typescript-eslint/no-explicit-any": "warn",
-    "jsx-a11y/heading-has-content": "warn"
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-empty-interface": "warn",
+    "@typescript-eslint/no-inferrable-types": "warn",
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "jsx-a11y/anchor-is-valid": "warn",
+    "jsx-a11y/heading-has-content": "warn",
+    "react-hooks/exhaustive-deps": "warn"
   }
 }

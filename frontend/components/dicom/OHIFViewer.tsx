@@ -6,10 +6,10 @@ interface OHIFViewerProps {
   width?: string;
 }
 
-export default function OHIFViewer({ 
-  studyInstanceUID, 
-  height = '600px', 
-  width = '100%' 
+export default function OHIFViewer({
+  studyInstanceUID,
+  height = '600px',
+  width = '100%',
 }: OHIFViewerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
