@@ -1,6 +1,5 @@
 'use client';
 
-import { Metadata } from 'next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Overview } from '@/components/dashboard/overview';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
@@ -9,6 +8,8 @@ import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useEffect, useState } from 'react';
+import { Metadata } from 'next';
+import { metadata as dashboardMetadata } from './metadata';
 
 interface DashboardStats {
   totalPatients: number;
@@ -16,11 +17,6 @@ interface DashboardStats {
   monthlyExams: number;
   scheduledExams: number;
 }
-
-export const metadata: Metadata = {
-  title: "Dashboard | NeuronaLabs",
-  description: "Přehled pacientů a diagnostických dat",
-};
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
