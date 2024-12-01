@@ -1,11 +1,12 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
-import { Database } from './lib/database.types';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { Database } from '@/types/supabase'
 
-// Definice veřejných a chráněných cest
-const PUBLIC_ROUTES = [
+// Definice veřejných cest
+const PUBLIC_PATHS = [
   '/',
+  '/login',
   '/auth/login',
   '/auth/register',
   '/auth/reset-password',
@@ -14,92 +15,63 @@ const PUBLIC_ROUTES = [
   '/contact'
 ];
 
-const ROLE_BASED_ROUTES = {
-  '/admin': ['admin'],
-  '/dashboard/medical': ['doctor', 'admin'],
-  '/dashboard/patient': ['patient', 'admin']
+// Definice rolí a jejich povolených cest
+const ROLE_PATHS: Record<string, string[]> = {
+  admin: ['/admin', '/dashboard', '/patients', '/studies', '/diagnoses'],
+  doctor: ['/dashboard', '/patients', '/studies', '/diagnoses'],
+  nurse: ['/dashboard', '/patients'],
+  receptionist: ['/dashboard', '/patients'],
+  patient: ['/dashboard/patient']
 };
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient<Database>({ req, res });
+  const res = NextResponse.next()
+  const supabase = createMiddlewareClient<Database>({ req, res })
 
-  try {
-    // Pokus o refresh session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('Session error:', sessionError);
-      // Při chybě session na chráněných cestách přesměrujeme na login
-      if (!isPublicRoute(req.nextUrl.pathname)) {
-        return redirectToLogin(req);
-      }
-      return res;
-    }
+  // Refresh session if exists
+  const { data: { session } } = await supabase.auth.getSession()
 
-    // Zpracování chráněných cest
-    if (!isPublicRoute(req.nextUrl.pathname)) {
-      if (!session) {
-        return redirectToLogin(req);
-      }
+  // Get the pathname
+  const path = req.nextUrl.pathname
 
-      // Kontrola rolí pro specifické cesty
-      const userRole = session.user?.user_metadata?.role;
-      const requiredRoles = getRequiredRoles(req.nextUrl.pathname);
-      
-      if (requiredRoles && !requiredRoles.includes(userRole)) {
-        return NextResponse.redirect(new URL('/unauthorized', req.url));
-      }
-    }
-
-    // Přesměrování přihlášených uživatelů z auth stránek
-    if (session && isAuthRoute(req.nextUrl.pathname)) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
-
-    // Přidání auth hlaviček do response
-    if (session) {
-      res.headers.set('x-user-id', session.user.id);
-      res.headers.set('x-user-role', session.user.user_metadata?.role || 'user');
-    }
-
-    return res;
-  } catch (error) {
-    console.error('Middleware error:', error);
-    // Při neočekávané chybě na chráněných cestách přesměrujeme na login
-    if (!isPublicRoute(req.nextUrl.pathname)) {
-      return redirectToLogin(req);
-    }
-    return res;
+  // Explicit redirects
+  if (path === '/login') {
+    return NextResponse.redirect(new URL('/auth/login', req.url))
   }
+
+  // Allow public paths
+  if (PUBLIC_PATHS.some(p => path.startsWith(p))) {
+    // If user is already logged in and tries to access auth pages, redirect to dashboard
+    if (session && path.startsWith('/auth')) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+    return res
+  }
+
+  // Handle authentication
+  if (!session) {
+    // Redirect to login if not authenticated and trying to access protected routes
+    const roleBasedPaths = Object.values(ROLE_PATHS).flat()
+    if (roleBasedPaths.some(p => path.startsWith(p))) {
+      return NextResponse.redirect(new URL('/auth/login', req.url))
+    }
+  } else {
+    // Check role-based access
+    const userRole = session.user.user_metadata.role || 'user'
+    const isAuthorized = Object.entries(ROLE_PATHS).some(
+      ([role, paths]) => 
+        userRole === role && paths.some(p => path.startsWith(p))
+    )
+
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/unauthorized', req.url))
+    }
+  }
+
+  return res
 }
 
-// Helper funkce
-function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-}
-
-function isAuthRoute(pathname: string): boolean {
-  return pathname.startsWith('/auth/');
-}
-
-function getRequiredRoles(pathname: string): string[] | null {
-  const route = Object.entries(ROLE_BASED_ROUTES)
-    .find(([route]) => pathname.startsWith(route));
-  return route ? route[1] : null;
-}
-
-function redirectToLogin(req: NextRequest): NextResponse {
-  const redirectUrl = new URL('/auth/login', req.url);
-  // Uložíme původní URL pro redirect po přihlášení
-  redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname + req.nextUrl.search);
-  return NextResponse.redirect(redirectUrl);
-}
-
-// Konfigurace middleware
+// Konfigurace middleware - spustí se na všech cestách kromě assets, api, _next
 export const config = {
-  matcher: [
-    // Aplikujeme middleware na všechny cesty kromě statických souborů a API
-    '/((?!_next/static|_next/image|favicon.ico|api/public).*)',
-  ]
-};
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|assets|public).*)'],
+}

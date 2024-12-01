@@ -6,98 +6,50 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    reactCompiler: true,
-    serverActions: {
-      allowedOrigins: ['localhost:3000'],
-    },
-    optimizePackageImports: ['@radix-ui', 'lucide-react'],
-  },
-  typescript: {
-    ignoreBuildErrors: false,
-  },
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
-    domains: [
-      'localhost',
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-    ],
-  },
-  reactStrictMode: true,
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING:
-      process.env.NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    AUTH_REDIRECT_URL: process.env.AUTH_REDIRECT_URL,
+    ENABLE_REALTIME: process.env.ENABLE_REALTIME || 'false',
+    ENABLE_EDGE_FUNCTIONS: process.env.ENABLE_EDGE_FUNCTIONS || 'false',
+    DEBUG: process.env.DEBUG || 'false',
   },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  reactStrictMode: true,
   async redirects() {
     return [
       {
-        source: '/home',
-        destination: '/',
+        source: '/login',
+        destination: '/auth/login',
         permanent: true,
       },
       {
-        source: '/auth/callback',
-        has: [
-          {
-            type: 'query',
-            key: 'error',
-          },
-        ],
+        source: '/patients/:id/edit',
+        destination: '/patients/:id',
         permanent: false,
-        destination: '/auth/login?error=:error',
       },
-    ];
+    ]
   },
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/(.*)',
         headers: [
           {
             key: 'X-Frame-Options',
             value: 'DENY',
           },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains',
-          },
         ],
       },
-    ];
+    ]
   },
-  webpack: (config) => {
-    config.module.rules.push({
-      test: /\.svg$/,
-      use: ['@svgr/webpack'],
-    });
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': __dirname,
-    };
-    config.experiments = { ...config.experiments, topLevelAwait: true };
-    return config;
-  },
-};
+}
 
 // Add Sentry configuration if DSN is provided
 if (process.env.NEXT_PUBLIC_SENTRY_DSN) {

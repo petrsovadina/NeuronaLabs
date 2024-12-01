@@ -1,52 +1,28 @@
-import { createBrowserClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Database } from '@/types/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+export const createClient = () => {
+  const debug = process.env.DEBUG === 'true';
+  const enableRealtime = process.env.ENABLE_REALTIME === 'true';
 
-// Singleton instance pro browser
-let browserInstance: ReturnType<typeof createBrowserClient<Database>> | null = null
-
-// Singleton instance pro server
-let serverInstance: ReturnType<typeof createClient<Database>> | null = null
-
-export function createSupabaseClient() {
-  if (typeof window === 'undefined') {
-    // Server-side
-    if (!serverInstance) {
-      serverInstance = createClient<Database>(
-        supabaseUrl,
-        supabaseKey,
-        {
-          auth: {
-            autoRefreshToken: true,
-            persistSession: true,
-            detectSessionInUrl: true
-          }
-        }
-      )
-    }
-    return serverInstance
-  }
-
-  // Browser-side
-  if (!browserInstance) {
-    browserInstance = createBrowserClient<Database>(
-      supabaseUrl,
-      supabaseKey,
-      {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true
-        }
-      }
-    )
-  }
-  return browserInstance
+  return createClientComponentClient<Database>({
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    options: {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+        debug,
+      },
+      realtime: {
+        enabled: enableRealtime,
+      },
+    },
+  })
 }
 
-export const supabase = createSupabaseClient()
+const supabase = createClient()
 
 export default supabase
