@@ -1,69 +1,77 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
-import { Database } from './lib/database.types';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { Database } from '@/types/supabase'
 
-// Konfigurace chráněných cest
-const PROTECTED_ROUTES = [
-  '/dashboard',
-  '/profile',
-  '/settings',
-  '/admin'
+// Definice veřejných cest
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/auth/login',
+  '/auth/register',
+  '/auth/reset-password',
+  '/auth/callback',
+  '/about',
+  '/contact'
 ];
 
-// Konfigurace rolí pro specifické cesty
-const ROLE_BASED_ROUTES = {
-  '/admin': ['admin'],
-  '/dashboard/medical': ['doctor', 'admin'],
-  '/dashboard/patient': ['patient', 'admin']
+// Definice rolí a jejich povolených cest
+const ROLE_PATHS: Record<string, string[]> = {
+  admin: ['/admin', '/dashboard', '/patients', '/studies', '/diagnoses'],
+  doctor: ['/dashboard', '/patients', '/studies', '/diagnoses'],
+  nurse: ['/dashboard', '/patients'],
+  receptionist: ['/dashboard', '/patients'],
+  patient: ['/dashboard/patient']
 };
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient<Database>({ req, res });
+  const res = NextResponse.next()
+  const supabase = createMiddlewareClient<Database>({ req, res })
 
-  // Získání aktuální relace
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
+  // Refresh session if exists
+  const { data: { session } } = await supabase.auth.getSession()
 
-  // Kontrola cesty
-  const path = req.nextUrl.pathname;
+  // Get the pathname
+  const path = req.nextUrl.pathname
 
-  // Ochrana autentizovaných cest
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
-    path.startsWith(route)
-  );
+  // Explicit redirects
+  if (path === '/login') {
+    return NextResponse.redirect(new URL('/auth/login', req.url))
+  }
 
-  if (isProtectedRoute) {
-    // Redirect na login, pokud není přihlášen
-    if (!user) {
-      return NextResponse.redirect(new URL('/auth/login', req.url));
+  // Allow public paths
+  if (PUBLIC_PATHS.some(p => path.startsWith(p))) {
+    // If user is already logged in and tries to access auth pages, redirect to dashboard
+    if (session && path.startsWith('/auth')) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
+    return res
+  }
 
-    // Kontrola rolí pro specifické cesty
-    const roleRestrictedRoute = Object.entries(ROLE_BASED_ROUTES).find(
-      ([route]) => path.startsWith(route)
-    );
+  // Handle authentication
+  if (!session) {
+    // Redirect to login if not authenticated and trying to access protected routes
+    const roleBasedPaths = Object.values(ROLE_PATHS).flat()
+    if (roleBasedPaths.some(p => path.startsWith(p))) {
+      return NextResponse.redirect(new URL('/auth/login', req.url))
+    }
+  } else {
+    // Check role-based access
+    const userRole = session.user.user_metadata.role || 'user'
+    const isAuthorized = Object.entries(ROLE_PATHS).some(
+      ([role, paths]) => 
+        userRole === role && paths.some(p => path.startsWith(p))
+    )
 
-    if (roleRestrictedRoute) {
-      const [, allowedRoles] = roleRestrictedRoute;
-      const userRole = user.user_metadata?.role;
-
-      if (!allowedRoles.includes(userRole)) {
-        return NextResponse.redirect(new URL('/unauthorized', req.url));
-      }
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/unauthorized', req.url))
     }
   }
 
-  return res;
+  return res
 }
 
-// Konfigurace middlewaru pro sledované cesty
+// Konfigurace middleware - spustí se na všech cestách kromě assets, api, _next
 export const config = {
-  matcher: [
-    '/dashboard/:path*', 
-    '/profile/:path*', 
-    '/settings/:path*', 
-    '/admin/:path*'
-  ]
-};
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|assets|public).*)'],
+}

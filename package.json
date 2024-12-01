@@ -1,25 +1,28 @@
 {
   "name": "neuronalabs",
   "version": "1.0.0",
+  "description": "NeuronaLabs Healthcare Platform",
   "scripts": {
     "start": "docker-compose up",
     "build": "docker-compose build",
     "init-supabase": "node scripts/initialize-supabase.js",
     "migrate": "ts-node scripts/supabase-migrate.ts",
-    "create-migration": "ts-node scripts/create-migration.ts"
+    "create-migration": "ts-node scripts/create-migration.ts",
+    "generate-test-data": "node scripts/generate-test-data.js"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.2.0",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
-    "@supabase/supabase-js": "^2.21.0",
+    "@supabase/supabase-js": "^2.39.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^16.3.1",
     "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "dotenv": "^16.0.3",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.0.4"
+    "@types/node": "^20.17.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
   }
 }

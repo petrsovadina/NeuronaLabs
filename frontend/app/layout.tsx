@@ -4,6 +4,7 @@ import { QueryProvider } from '@/components/providers/query-provider';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { Metadata } from 'next';
+import { AuthProvider } from '@/providers/AuthProvider';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -38,11 +39,13 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <div className="min-h-screen bg-background">
-              <Navigation />
-              <main className="container mx-auto px-4 py-8">{children}</main>
-            </div>
-            <Toaster />
+            <AuthProvider>
+              <div className="min-h-screen bg-background">
+                <Navigation />
+                <main className="container mx-auto px-4 py-8">{children}</main>
+              </div>
+              <Toaster />
+            </AuthProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>

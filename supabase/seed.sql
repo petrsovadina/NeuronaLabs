@@ -1,68 +1,156 @@
 -- Seed data pro testovací účely
 
--- Vložení testovacích uživatelů
-INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_app_meta_data)
-VALUES 
-    ('d0d4e39c-4f1a-4d22-8293-7b4ff17b5e69', 'dr.novak@neuronalabs.cz', crypt('heslo123', gen_salt('bf')), now(), '{"provider": "email", "providers": ["email"]}'),
-    ('e1d5f49d-5f2b-5d33-9394-8b5ff28b6f70', 'dr.svoboda@neuronalabs.cz', crypt('heslo123', gen_salt('bf')), now(), '{"provider": "email", "providers": ["email"]}');
+-- Vložení testovacího lékaře do auth.users
+INSERT INTO auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at
+) VALUES (
+    '00000000-0000-0000-0000-000000000000',
+    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
+    'authenticated',
+    'authenticated',
+    'admin@admin.cz',
+    crypt('admin123456', gen_salt('bf')),
+    now(),
+    '{"provider": "email", "providers": ["email"]}',
+    '{}',
+    now(),
+    now()
+);
 
-INSERT INTO users (id, first_name, last_name, email, phone, role, specialization, license_number)
-VALUES
-    ('d0d4e39c-4f1a-4d22-8293-7b4ff17b5e69', 'Jan', 'Novák', 'dr.novak@neuronalabs.cz', '+420777888999', 'doctor', 'Neurologie', 'CZ12345'),
-    ('e1d5f49d-5f2b-5d33-9394-8b5ff28b6f70', 'Marie', 'Svobodová', 'dr.svoboda@neuronalabs.cz', '+420777888000', 'admin', 'Radiologie', 'CZ67890');
+-- Vložení testovacího lékaře do users
+INSERT INTO users (
+    id,
+    first_name,
+    last_name,
+    email,
+    phone,
+    role,
+    specialization,
+    license_number
+) VALUES (
+    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
+    'Jan',
+    'Novák',
+    'admin@admin.cz',
+    '+420123456789',
+    'doctor'::user_role,
+    'Neurologie',
+    'LEK123456'
+);
 
 -- Vložení testovacích pacientů
-INSERT INTO patients (id, first_name, last_name, birth_date, gender, email, phone, insurance_number, created_by)
-VALUES
-    ('f2d6e59e-6f3c-6d44-0495-9c6ff39c7f71', 'Petr', 'Černý', '1980-05-15', 'M', 'petr@email.cz', '+420777666555', '123456789', 'd0d4e39c-4f1a-4d22-8293-7b4ff17b5e69'),
-    ('93d7e69f-7f4d-7d55-1596-0d7ff40d8f72', 'Jana', 'Bílá', '1990-08-20', 'F', 'jana@email.cz', '+420777666444', '987654321', 'e1d5f49d-5f2b-5d33-9394-8b5ff28b6f70');
-
--- Vložení testovacích DICOM studií
-INSERT INTO dicom_studies (
-    id, patient_id, doctor_id, study_type, study_date, 
-    study_description, file_path, file_size
+INSERT INTO patients (
+    id,
+    doctor_id,
+    medical_record_number,
+    first_name,
+    last_name,
+    birth_date,
+    gender,
+    email,
+    phone,
+    address,
+    city,
+    postal_code,
+    country,
+    status,
+    insurance_number,
+    insurance_company,
+    insurance_status,
+    notes
 )
-VALUES
-    ('84d8e39c-8f5e-4d66-8697-1e8ff51e9f73', 
-    'f2d6e59e-6f3c-6d44-0495-9c6ff39c7f71', 
-    'd0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
-    'mri',
-    '2023-01-15 10:00:00',
-    'MRI mozku', 
-    '/storage/studies/study1',
-    1024000
-    ),
-    ('95d9e89f-9f6f-4d77-9798-2f9ff62f0f74',
-    '93d7e69f-7f4d-7d55-1596-0d7ff40d8f72',
-    'e1d5f49d-5f2b-5d33-9394-8b5ff28b6f70',
-    'ct',
-    '2023-02-20 14:30:00',
-    'CT páteře',
-    '/storage/studies/study2',
-    512000
-    );
+SELECT 
+    gen_random_uuid(),
+    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
+    'MRN' || LPAD(CAST(generate_series AS text), 6, '0'),
+    'Pacient' || generate_series,
+    'Příjmení' || generate_series,
+    '1980-01-01'::date + (generate_series || ' years')::interval,
+    CASE (random() * 2)::integer
+        WHEN 0 THEN 'male'
+        WHEN 1 THEN 'female'
+        ELSE 'other'
+    END,
+    'pacient' || generate_series || '@example.com',
+    '+420' || LPAD(CAST((900000000 + generate_series) AS text), 9, '0'),
+    'Ulice ' || generate_series,
+    'Praha',
+    '110 00',
+    'Czech Republic',
+    CASE (random() * 2)::integer
+        WHEN 0 THEN 'active'::patient_status
+        WHEN 1 THEN 'inactive'::patient_status
+        ELSE 'archived'::patient_status
+    END,
+    LPAD(CAST((1000000000 + generate_series) AS text), 10, '0'),
+    'VZP',
+    'active'::insurance_status,
+    'Testovací pacient ' || generate_series
+FROM generate_series(1, 10);
 
 -- Vložení testovacích diagnóz
 INSERT INTO diagnoses (
-    id, patient_id, doctor_id, diagnosis_name, description, treatment_plan
+    id,
+    patient_id,
+    doctor_id,
+    diagnosis_code,
+    description,
+    status,
+    notes
 )
-VALUES
-    ('a8d2e12c-2f9a-4d00-9001-5f2ff95f3f77',
-    '93d7e69f-7f4d-7d55-1596-0d7ff40d8f72',
-    'e1d5f49d-5f2b-5d33-9394-8b5ff28b6f70',
-    'Degenerativní změny páteře',
-    'Nalezeny degenerativní změny v oblasti L4-L5',
-    'Doporučena rehabilitace a kontrola za 6 měsíců'
-    );
+SELECT 
+    gen_random_uuid(),
+    p.id,
+    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
+    'ICD-' || LPAD(CAST(generate_series AS text), 3, '0'),
+    'Diagnóza ' || generate_series,
+    CASE (random() * 2)::integer
+        WHEN 0 THEN 'preliminary'::diagnosis_status
+        WHEN 1 THEN 'confirmed'::diagnosis_status
+        ELSE 'archived'::diagnosis_status
+    END,
+    'Poznámka k diagnóze ' || generate_series
+FROM generate_series(1, 20), (SELECT id FROM patients LIMIT 1) p;
 
--- Vložení testovacích záznamů do audit logu
-INSERT INTO audit_log (
-    user_id, action, table_name, record_id, new_values
+-- Vložení testovacích vyšetření
+WITH patient_ids AS (
+    SELECT id FROM patients
 )
-VALUES
-    ('d0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
-    'CREATE',
-    'patients',
-    'f2d6e59e-6f3c-6d44-0495-9c6ff39c7f71',
-    '{"first_name": "Petr", "last_name": "Černý"}'
-    );
+INSERT INTO studies (
+    id,
+    patient_id,
+    doctor_id,
+    study_type,
+    study_date,
+    description,
+    dicom_study_uid,
+    storage_path,
+    notes
+)
+SELECT 
+    gen_random_uuid(),
+    p.id,
+    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
+    CASE (random() * 4)::integer
+        WHEN 0 THEN 'mri'::study_type
+        WHEN 1 THEN 'ct'::study_type
+        WHEN 2 THEN 'xray'::study_type
+        WHEN 3 THEN 'ultrasound'::study_type
+        ELSE 'other'::study_type
+    END,
+    now() - (generate_series || ' days')::interval,
+    'Vyšetření ' || generate_series,
+    '1.2.3.4.' || uuid_generate_v4(),
+    '/storage/studies/' || generate_series,
+    'Poznámka k vyšetření ' || generate_series
+FROM generate_series(1, 15), (SELECT id FROM patients LIMIT 1) p;
