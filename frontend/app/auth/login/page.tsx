@@ -22,48 +22,112 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
+    console.log('Login attempt:', { email }); // Přidáno pro ladění
+
     try {
+      // Přidáme kontrolu připojení k Supabase
+      console.log('Supabase client configuration:', {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKeyPresent: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      });
+
+      // Zkontrolujeme dostupnost schématu
+      try {
+        const schemaCheck = await supabase.rpc('current_schema');
+        console.log('Current schema:', schemaCheck);
+      } catch (schemaError) {
+        console.error('Schema check error:', schemaError);
+      }
+
+      // Přidáme kontrolu připojení k Supabase
+      const supabaseStatus = await supabase.from('users').select('*').limit(1);
+      console.log('Supabase connection status:', supabaseStatus);
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      console.log('SignIn response:', { data, error }); // Přidáno pro ladění
+
+      if (error) {
+        console.error('Login error details:', {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          details: error.details
+        });
+        throw error;
+      }
 
       if (data?.user) {
-        // Získat roli uživatele
+        console.log('User authenticated:', data.user);
+
+        // Přidáme kontrolu existence uživatele v databázi
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('role')
           .eq('id', data.user.id)
           .single();
 
-        if (userError) throw userError;
+        console.log('User database check:', { userData, userError }); // Přidáno pro ladění
+
+        if (userError) {
+          console.error('User role fetch error:', {
+            message: userError.message,
+            details: userError.details
+          });
+          
+          // Pokud uživatel není v databázi, zkusíme ho vytvořit
+          if (userError.code === 'PGRST116') {
+            console.log('User not found in database, attempting to create...');
+            const { data: newUserData, error: createError } = await supabase
+              .from('users')
+              .insert({
+                id: data.user.id,
+                first_name: 'Uživatel',
+                last_name: 'Systém',
+                email: data.user.email,
+                role: 'user'
+              });
+
+            if (createError) {
+              console.error('User creation error:', createError);
+              throw createError;
+            }
+
+            console.log('User created successfully:', newUserData);
+          } else {
+            throw userError;
+          }
+        }
 
         // Aktualizovat metadata uživatele s rolí
-        await supabase.auth.updateUser({
+        const { data: updateData, error: updateError } = await supabase.auth.updateUser({
           data: { role: userData?.role || 'user' }
         });
+
+        console.log('User metadata update:', { updateData, updateError }); // Přidáno pro ladění
+
+        if (updateError) {
+          console.error('User metadata update error:', {
+            message: updateError.message,
+            details: updateError.details
+          });
+          throw updateError;
+        }
 
         // Přesměrování na původní stránku nebo dashboard
         const redirectTo = searchParams.get('redirectTo') || '/dashboard';
         router.push(redirectTo);
         router.refresh();
       }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      let errorMessage = 'Nepodařilo se přihlásit';
-      
-      if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = 'Nesprávný email nebo heslo';
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = 'Email nebyl potvrzen. Zkontrolujte prosím svou emailovou schránku.';
-      }
-
+    } catch (error) {
+      console.error('Comprehensive login error:', error);
       toast({
-        title: 'Chyba při přihlášení',
-        description: errorMessage,
-        variant: 'destructive',
+        title: 'Chyba přihlášení',
+        description: error instanceof Error ? error.message : 'Nastala neočekávaná chyba',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);

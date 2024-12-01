@@ -1,234 +1,134 @@
-# NeuronaLabs Healthcare Platform
+# NeuronaLabs 🧠 Healthcare Management Platform
 
-Platforma pro správu zdravotnických dat a DICOM snímků.
+## 🌟 Project Overview
 
-## Funkce
+NeuronaLabs is an advanced, secure, and scalable healthcare management system designed to revolutionize patient data handling and medical workflow optimization.
 
-- Správa pacientů a jejich zdravotních záznamů
-- DICOM prohlížeč (OHIF Viewer)
-- Diagnostická data management
-- GraphQL API
-- Zabezpečený přístup a správa uživatelů
+### 🔬 Core Features
 
-## Technický Stack
+- 🔐 Secure User Authentication
+- 📋 Comprehensive Patient Management
+- 🌐 Real-time Data Synchronization
+- 📊 Advanced Analytics
+- 🏥 HIPAA Compliant Infrastructure
 
-### Backend
-- .NET 8.0
-- GraphQL (HotChocolate)
-- Supabase (Auth, Storage, Realtime)
-- PostgreSQL
+## 💻 Technology Stack
 
-### Frontend
-- Next.js 14
-- OHIF Viewer v3
-- Tailwind CSS
-- GraphQL (Apollo Client)
-- Supabase JS Client
+- **Frontend**: Next.js 14
+- **Backend**: Supabase
+- **Database**: PostgreSQL
+- **Authentication**: Supabase Auth
+- **Styling**: Tailwind CSS
+- **Language**: TypeScript
 
-### Infrastruktura
-- Docker + Docker Compose
-- Supabase Platform
-- Vercel (Frontend)
+## 🚀 Quick Start
 
-## Požadavky
+### Prerequisites
 
-- .NET 8.0 SDK
-- Node.js 18+ a npm
-- Docker Desktop
+- Node.js 18+
+- npm 9+
+- Docker
 - Supabase CLI
-- Git
 
-## Rychlý start
+### Installation Steps
 
-1. Klonování repozitáře:
 ```bash
-git clone https://github.com/your-org/neuronalabs.git
-cd neuronalabs
-```
+# Clone the repository
+git clone https://github.com/NeuronaLabs/platform.git
+cd platform
 
-2. Instalace Supabase CLI (pokud není nainstalováno):
-```bash
-# macOS
-brew install supabase/tap/supabase
-
-# Windows (přes scoop)
-scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-scoop install supabase
-```
-
-3. Nastavení prostředí:
-```bash
-cp .env.example .env
-# Upravte .env soubor s vašimi Supabase credentials
-```
-
-4. Inicializace Supabase projektu:
-```bash
-./scripts/init-supabase.sh
-```
-
-5. Spuštění aplikace:
-```bash
-# Backend
-cd backend
-dotnet run
-
-# Frontend (v novém terminálu)
-cd frontend
+# Install dependencies
 npm install
-npm run dev
-```
 
-Aplikace bude dostupná na:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
-- GraphQL Playground: http://localhost:5000/graphql
-- Supabase Studio: http://localhost:54323/studio
+# Copy environment template
+cp .env.example .env
 
-## Struktura projektu
-
-```
-├── backend/           # .NET Backend
-│   ├── GraphQL/      # GraphQL schéma a resolvery
-│   ├── Models/       # Doménové modely
-│   └── Services/     # Byznys logika a služby
-├── frontend/         # Next.js Frontend
-│   ├── app/         # Next.js 14 App Router
-│   ├── components/  # React komponenty
-│   └── lib/         # Sdílené utility
-├── supabase/        # Supabase konfigurace
-│   ├── migrations/  # SQL migrace
-│   └── seed.sql     # Testovací data
-└── scripts/         # Pomocné skripty
-```
-
-## Supabase Setup
-
-### Lokální vývoj
-
-1. Spuštění lokálního Supabase:
-```bash
+# Initialize Supabase
 supabase start
 ```
 
-2. Aplikace migrací:
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Supabase Anon Key | ✅ |
+| `SUPABASE_SERVICE_KEY` | Supabase Service Role Key | ✅ |
+| `NEXT_PUBLIC_AUTH_CALLBACK_URL` | Authentication Callback URL | ✅ |
+
+### Development
+
 ```bash
-supabase db reset
-```
-
-3. Generování TypeScript typů:
-```bash
-supabase gen types typescript --local > ./frontend/types/supabase.ts
-```
-
-### Produkční nasazení
-
-1. Vytvoření nového projektu na Supabase:
-```bash
-supabase link --project-ref <project-id>
-```
-
-2. Push schématu do produkce:
-```bash
-supabase db push
-```
-
-## Autentizace a Bezpečnost
-
-- JWT autentizace přes Supabase Auth
-- Row Level Security (RLS) policies
-- RBAC (Role-Based Access Control)
-- Šifrování citlivých dat
-- Audit logy
-
-## Vývoj
-
-### Backend
-
-1. Spuštění API:
-```bash
-cd backend
-dotnet watch run
-```
-
-2. Přístup ke GraphQL Playground:
-- http://localhost:5000/graphql
-
-### Frontend
-
-1. Spuštění vývojového serveru:
-```bash
-cd frontend
+# Start development server
 npm run dev
 ```
 
-2. Build pro produkci:
+### Production Build
+
 ```bash
+# Build for production
 npm run build
+
+# Start production server
 npm start
 ```
 
-## Testování
+## 🧪 Testing
 
 ```bash
-# Backend testy
-cd backend
-dotnet test
-
-# Frontend testy
-cd frontend
+# Run unit tests
 npm test
+
+# Run end-to-end tests
+npm run test:e2e
 ```
 
-## Deployment
+## 🔒 Security Features
 
-### Frontend (Vercel)
+- Row Level Security (RLS)
+- Multi-factor Authentication
+- Comprehensive Input Validation
+- Secure JWT Token Management
 
-1. Push do GitHub
-2. Propojení s Vercel
-3. Nastavení environment variables
+## 📊 Monitoring & Logging
 
-### Backend
+- Integrated Supabase Logging
+- Optional Sentry Integration
+- Performance Metrics Tracking
 
-Detailní instrukce v `docs/deployment.md`
+## 🤝 Contributing
 
-## Řešení problémů
+1. Fork the Repository
+2. Create Feature Branch
+3. Commit Changes
+4. Push to Branch
+5. Open Pull Request
 
-### Reset lokálního prostředí
+### Contribution Guidelines
 
-```bash
-# Stop a reset Supabase
-supabase stop
-supabase start --reset
+- Follow TypeScript Best Practices
+- Write Comprehensive Tests
+- Maintain Clean, Readable Code
+- Update Documentation
 
-# Reset databáze
-supabase db reset
-```
+## 📜 License
 
-### Logy
+MIT License
 
-```bash
-# Supabase logy
-supabase logs
+## 📞 Contact
 
-# Backend logy
-dotnet run --launch-profile Development
+**Petr Sovadina**
+- Email: petr.sovadina@neuronalabs.cz
+- LinkedIn: [Profile Link]
 
-# Frontend logy
-npm run dev
-```
+## 🌍 Project Links
 
-## Dokumentace
+- **GitHub**: [Repository URL]
+- **Documentation**: [Docs URL]
+- **Live Demo**: [Demo URL]
 
-- [Architektura](docs/architecture.md)
-- [API Reference](docs/api.md)
-- [Supabase Schema](docs/schema.md)
-- [Security](docs/security.md)
+---
 
-## Příspěvky
-
-Viz [CONTRIBUTING.md](CONTRIBUTING.md)
-
-## Licence
-
-MIT
+**Built with ❤️ by NeuronaLabs Team**

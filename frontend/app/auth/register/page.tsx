@@ -18,12 +18,70 @@ export default function RegisterPage() {
   const { toast } = useToast();
   const supabase = createClientComponentClient();
 
+  const validatePassword = (password: string): string | null => {
+    if (password.length < 8) {
+      return 'Heslo musí mít alespoň 8 znaků';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'Heslo musí obsahovat alespoň jedno velké písmeno';
+    }
+    if (!/[0-9]/.test(password)) {
+      return 'Heslo musí obsahovat alespoň jednu číslici';
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      return 'Heslo musí obsahovat alespoň jeden speciální znak';
+    }
+    return null;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
+    // Validace hesla před registrací
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      toast({
+        title: 'Neplatné heslo',
+        description: passwordError,
+        variant: 'destructive'
+      });
+      setLoading(false);
+      return;
+    }
+
+    console.log('Registration attempt:', { 
+      email, 
+      firstName, 
+      lastName,
+      supabaseConfig: {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKeyPresent: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      }
+    });
+
     try {
-      // Register the user
+      // Kontrola připojení k Supabase
+      const supabaseStatus = await supabase.from('users').select('*').limit(1);
+      console.log('Supabase connection status:', supabaseStatus);
+
+      // Kontrola existence uživatele před registrací
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (existingUser) {
+        toast({
+          title: 'Registrace selhala',
+          description: 'Uživatel s tímto emailem již existuje',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Registrace uživatele
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -32,35 +90,85 @@ export default function RegisterPage() {
             first_name: firstName,
             last_name: lastName,
           },
+          emailRedirectTo: process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL || '/dashboard'
         },
       });
 
-      if (authError) throw authError;
+      console.log('SignUp response:', { authData, authError });
+
+      if (authError) {
+        console.error('Auth registration error:', {
+          message: authError.message,
+          status: authError.status,
+          code: authError.code,
+          details: authError.details
+        });
+
+        let errorMessage = 'Nepodařilo se vytvořit účet';
+        switch (authError.message) {
+          case 'User already registered':
+            errorMessage = 'Uživatel s tímto emailem je již zaregistrován';
+            break;
+          case 'Invalid email address':
+            errorMessage = 'Neplatná emailová adresa';
+            break;
+          case 'Password too short':
+            errorMessage = 'Heslo je příliš krátké';
+            break;
+        }
+
+        toast({
+          title: 'Chyba registrace',
+          description: errorMessage,
+          variant: 'destructive'
+        });
+
+        throw authError;
+      }
 
       if (authData?.user) {
-        // Create user profile in the users table
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert([
-            {
-              id: authData.user.id,
-              email,
-              first_name: firstName,
-              last_name: lastName,
-              role: 'doctor', // Default role
-            },
-          ]);
+        console.log('User authenticated:', authData.user);
 
-        if (profileError) throw profileError;
+        // Vytvoření profilu uživatele v tabulce users
+        const { data: profileData, error: profileError } = await supabase
+          .from('users')
+          .upsert({
+            id: authData.user.id,
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            role: 'doctor', // Výchozí role
+          }, { 
+            onConflict: 'id' 
+          });
+
+        console.log('User profile upsert:', { profileData, profileError });
+
+        if (profileError) {
+          console.error('Profile creation error:', {
+            message: profileError.message,
+            details: profileError.details
+          });
+          
+          toast({
+            title: 'Chyba vytvoření profilu',
+            description: 'Nepodařilo se vytvořit uživatelský profil',
+            variant: 'destructive'
+          });
+
+          throw profileError;
+        }
 
         toast({
           title: 'Registrace úspěšná',
-          description: 'Váš účet byl vytvořen. Nyní se můžete přihlásit.',
+          description: 'Váš účet byl vytvořen. Zkontrolujte svůj email pro ověření.',
         });
 
         router.push('/auth/login');
       }
     } catch (error: any) {
+      console.error('Comprehensive registration error:', error);
+      
       toast({
         title: 'Chyba při registraci',
         description: error.message || 'Nepodařilo se vytvořit účet',
