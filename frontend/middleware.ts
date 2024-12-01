@@ -3,15 +3,17 @@ import type { NextRequest } from 'next/server';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { Database } from './lib/database.types';
 
-// Konfigurace chráněných cest
-const PROTECTED_ROUTES = [
-  '/dashboard',
-  '/profile',
-  '/settings',
-  '/admin'
+// Definice veřejných a chráněných cest
+const PUBLIC_ROUTES = [
+  '/',
+  '/auth/login',
+  '/auth/register',
+  '/auth/reset-password',
+  '/auth/callback',
+  '/about',
+  '/contact'
 ];
 
-// Konfigurace rolí pro specifické cesty
 const ROLE_BASED_ROUTES = {
   '/admin': ['admin'],
   '/dashboard/medical': ['doctor', 'admin'],
@@ -22,48 +24,82 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient<Database>({ req, res });
 
-  // Získání aktuální relace
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
-
-  // Kontrola cesty
-  const path = req.nextUrl.pathname;
-
-  // Ochrana autentizovaných cest
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
-    path.startsWith(route)
-  );
-
-  if (isProtectedRoute) {
-    // Redirect na login, pokud není přihlášen
-    if (!user) {
-      return NextResponse.redirect(new URL('/auth/login', req.url));
+  try {
+    // Pokus o refresh session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      // Při chybě session na chráněných cestách přesměrujeme na login
+      if (!isPublicRoute(req.nextUrl.pathname)) {
+        return redirectToLogin(req);
+      }
+      return res;
     }
 
-    // Kontrola rolí pro specifické cesty
-    const roleRestrictedRoute = Object.entries(ROLE_BASED_ROUTES).find(
-      ([route]) => path.startsWith(route)
-    );
+    // Zpracování chráněných cest
+    if (!isPublicRoute(req.nextUrl.pathname)) {
+      if (!session) {
+        return redirectToLogin(req);
+      }
 
-    if (roleRestrictedRoute) {
-      const [, allowedRoles] = roleRestrictedRoute;
-      const userRole = user.user_metadata?.role;
-
-      if (!allowedRoles.includes(userRole)) {
+      // Kontrola rolí pro specifické cesty
+      const userRole = session.user?.user_metadata?.role;
+      const requiredRoles = getRequiredRoles(req.nextUrl.pathname);
+      
+      if (requiredRoles && !requiredRoles.includes(userRole)) {
         return NextResponse.redirect(new URL('/unauthorized', req.url));
       }
     }
-  }
 
-  return res;
+    // Přesměrování přihlášených uživatelů z auth stránek
+    if (session && isAuthRoute(req.nextUrl.pathname)) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+
+    // Přidání auth hlaviček do response
+    if (session) {
+      res.headers.set('x-user-id', session.user.id);
+      res.headers.set('x-user-role', session.user.user_metadata?.role || 'user');
+    }
+
+    return res;
+  } catch (error) {
+    console.error('Middleware error:', error);
+    // Při neočekávané chybě na chráněných cestách přesměrujeme na login
+    if (!isPublicRoute(req.nextUrl.pathname)) {
+      return redirectToLogin(req);
+    }
+    return res;
+  }
 }
 
-// Konfigurace middlewaru pro sledované cesty
+// Helper funkce
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+}
+
+function isAuthRoute(pathname: string): boolean {
+  return pathname.startsWith('/auth/');
+}
+
+function getRequiredRoles(pathname: string): string[] | null {
+  const route = Object.entries(ROLE_BASED_ROUTES)
+    .find(([route]) => pathname.startsWith(route));
+  return route ? route[1] : null;
+}
+
+function redirectToLogin(req: NextRequest): NextResponse {
+  const redirectUrl = new URL('/auth/login', req.url);
+  // Uložíme původní URL pro redirect po přihlášení
+  redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname + req.nextUrl.search);
+  return NextResponse.redirect(redirectUrl);
+}
+
+// Konfigurace middleware
 export const config = {
   matcher: [
-    '/dashboard/:path*', 
-    '/profile/:path*', 
-    '/settings/:path*', 
-    '/admin/:path*'
+    // Aplikujeme middleware na všechny cesty kromě statických souborů a API
+    '/((?!_next/static|_next/image|favicon.ico|api/public).*)',
   ]
 };

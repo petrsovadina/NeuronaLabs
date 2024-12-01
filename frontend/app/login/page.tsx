@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import supabase from '@/lib/supabase/client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/ui/icons';
@@ -21,7 +21,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,15 +32,17 @@ export default function LoginPage() {
     const password = formData.get('password') as string;
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) throw signInError;
 
-      router.push('/dashboard');
-      router.refresh();
+      if (data?.user) {
+        router.push('/dashboard');
+        router.refresh();
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError('Nesprávné přihlašovací údaje. Zkuste to prosím znovu.');
