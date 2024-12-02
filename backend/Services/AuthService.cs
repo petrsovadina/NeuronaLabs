@@ -2,105 +2,135 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using NeuronaLabs.Data;
 using NeuronaLabs.Models;
 using BC = BCrypt.Net.BCrypt;
 
 namespace NeuronaLabs.Services
 {
-    public class AuthService : IAuthService
+    public class AuthService
     {
-        private readonly NeuronaLabsContext _context;
         private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _dbContext;
 
-        public AuthService(NeuronaLabsContext context, IConfiguration configuration)
+        public AuthService(IConfiguration configuration, ApplicationDbContext dbContext)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = configuration;
+            _dbContext = dbContext;
         }
 
-        public async Task<string> AuthenticateAsync(string username, string password)
+        public async Task<AuthResult> RegisterAsync(string email, string password, UserRole role)
         {
-            if (string.IsNullOrEmpty(username))
-                throw new ArgumentException("Username cannot be empty", nameof(username));
-            
-            if (string.IsNullOrEmpty(password))
-                throw new ArgumentException("Password cannot be empty", nameof(password));
+            // Kontrola existence uživatele
+            if (_dbContext.Users.Any(u => u.Email == email))
+            {
+                return new AuthResult { Success = false, Message = "Uživatel s tímto emailem již existuje." };
+            }
 
-            var user = await _context.Users.FirstOrDefaultAsync(x => x.Username == username);
+            // Hashování hesla
+            var hashedPassword = BC.HashPassword(password);
 
-            if (user == null || !BC.Verify(password, user.PasswordHash))
-                throw new UnauthorizedAccessException("Invalid username or password");
-
-            return GenerateJwtToken(user);
-        }
-
-        public async Task<User> GetUserByIdAsync(int userId)
-        {
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
-                throw new KeyNotFoundException($"User with ID {userId} not found");
-            return user;
-        }
-
-        public async Task<User> RegisterAsync(string username, string password, string email)
-        {
-            if (string.IsNullOrEmpty(username))
-                throw new ArgumentException("Username cannot be empty", nameof(username));
-            
-            if (string.IsNullOrEmpty(password))
-                throw new ArgumentException("Password cannot be empty", nameof(password));
-            
-            if (string.IsNullOrEmpty(email))
-                throw new ArgumentException("Email cannot be empty", nameof(email));
-
-            if (await _context.Users.AnyAsync(x => x.Username == username))
-                throw new InvalidOperationException("Username already exists");
-
-            if (await _context.Users.AnyAsync(x => x.Email == email))
-                throw new InvalidOperationException("Email already exists");
-
+            // Vytvoření uživatele
             var user = new User
             {
-                Username = username,
                 Email = email,
-                PasswordHash = BC.HashPassword(password),
+                PasswordHash = hashedPassword,
+                Role = role,
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            _dbContext.Users.Add(user);
+            await _dbContext.SaveChangesAsync();
 
-            return user;
+            // Generování tokenu
+            var token = GenerateJwtToken(user);
+
+            return new AuthResult 
+            { 
+                Success = true, 
+                Token = token,
+                User = user 
+            };
+        }
+
+        public async Task<AuthResult> LoginAsync(string email, string password)
+        {
+            // Nalezení uživatele
+            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            if (user == null)
+            {
+                return new AuthResult { Success = false, Message = "Neplatné přihlašovací údaje." };
+            }
+
+            // Ověření hesla
+            if (!BC.Verify(password, user.PasswordHash))
+            {
+                return new AuthResult { Success = false, Message = "Neplatné přihlašovací údaje." };
+            }
+
+            // Generování tokenu
+            var token = GenerateJwtToken(user);
+
+            return new AuthResult 
+            { 
+                Success = true, 
+                Token = token,
+                User = user 
+            };
         }
 
         private string GenerateJwtToken(User user)
         {
-            var jwtSecret = _configuration["JWT:Secret"] ?? 
-                throw new InvalidOperationException("JWT:Secret not configured");
+            var securityKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(jwtSecret);
-
-            var tokenDescriptor = new SecurityTokenDescriptor
+            var claims = new[]
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Username),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Role, user.Role ?? "user")
-                }),
-                Expires = DateTime.UtcNow.AddDays(7),
-                SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature)
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(2),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+        {
+            var user = await _dbContext.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            // Ověření stávajícího hesla
+            if (!BC.Verify(currentPassword, user.PasswordHash))
+            {
+                return false;
+            }
+
+            // Nastavení nového hesla
+            user.PasswordHash = BC.HashPassword(newPassword);
+            await _dbContext.SaveChangesAsync();
+
+            return true;
+        }
+    }
+
+    public class AuthResult
+    {
+        public bool Success { get; set; }
+        public string? Token { get; set; }
+        public string? Message { get; set; }
+        public User? User { get; set; }
     }
 }

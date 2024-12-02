@@ -1,0 +1,53 @@
+groups:
+- name: backend_alerts
+  rules:
+  - alert: BackendHighCPUUsage
+    expr: process_cpu_usage{job="backend"} > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Backend vysoké využití CPU"
+      description: "Backend překračuje 80% využití CPU po dobu 5 minut"
+
+  - alert: BackendHighMemoryUsage
+    expr: process_memory_usage_bytes{job="backend"} / process_memory_limit_bytes{job="backend"} > 0.8
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Backend vysoké využití paměti"
+      description: "Backend překračuje 80% využití paměti po dobu 5 minut"
+
+- name: dicom_alerts
+  rules:
+  - alert: OrthancStudyUploadFailure
+    expr: orthanc_study_upload_failures_total > 5
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Selhání nahrávání DICOM studií"
+      description: "Více než 5 selhání nahrávání DICOM studií za 10 minut"
+
+- name: database_alerts
+  rules:
+  - alert: PostgresConnectionPoolExhausted
+    expr: postgres_connection_pool_used{job="postgres"} / postgres_connection_pool_total{job="postgres"} > 0.9
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Vyčerpán connection pool PostgreSQL"
+      description: "Více než 90% connection poolu je využito po dobu 5 minut"
+
+- name: system_alerts
+  rules:
+  - alert: HighDiskUsage
+    expr: node_filesystem_free_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.1
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Nízké místo na disku"
+      description: "Méně než 10% volného místa na disku po dobu 15 minut"

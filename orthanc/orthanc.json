@@ -1,0 +1,39 @@
+{
+    "Name": "NeuronaLabs DICOM Server",
+    "StorageDirectory": "/var/lib/orthanc/db",
+    "IndexDirectory": "/var/lib/orthanc/db",
+    "DicomAet": "NEURONALABS",
+    "DicomPort": 4242,
+    "HttpPort": 8042,
+    "AuthenticationEnabled": true,
+    "RegisteredUsers": {
+        "admin": "neuronalabs2024"
+    },
+    "SslEnabled": false,
+    "Plugins": [],
+    "Transcodings": [
+        "decompress",
+        "transcode"
+    ],
+    "WebDavEnabled": false,
+    "DicomServerEnabled": true,
+    "OrthancExplorer2": {
+        "Enable": true
+    },
+    "Logging": {
+        "Enabled": true,
+        "Verbose": true,
+        "FileAccessMode": "append"
+    },
+    "Security": {
+        "HttpRequestTimeout": 30,
+        "HttpMaxContentLength": 1024,
+        "HttpsVerifyPeers": false
+    },
+    "DatabaseServer": {
+        "Host": "supabase-db",
+        "Port": 5432,
+        "Database": "neuronalabs",
+        "Username": "postgres"
+    }
+}

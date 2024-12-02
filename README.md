@@ -1,134 +1,129 @@
-# NeuronaLabs 🧠 Healthcare Management Platform
+# NeuronaLabs Medical Platform 🏥
 
-## 🌟 Project Overview
+## 🌟 Projekt Overview
+Komplexní platforma pro správu zdravotnických dat s pokročilou integrací DICOM a zabezpečeným managementem pacientských informací.
 
-NeuronaLabs is an advanced, secure, and scalable healthcare management system designed to revolutionize patient data handling and medical workflow optimization.
+## 🚀 Technologický Stack
+- **Backend**: .NET 8.0 s GraphQL (HotChocolate)
+- **Frontend**: Next.js 15 s React
+- **Databáze**: Supabase (PostgreSQL)
+- **DICOM**: Orthanc Server, OHIF Viewer
+- **Kontejnerizace**: Docker Compose
+- **Autentizace**: Supabase Auth s JWT
 
-### 🔬 Core Features
-
-- 🔐 Secure User Authentication
-- 📋 Comprehensive Patient Management
-- 🌐 Real-time Data Synchronization
-- 📊 Advanced Analytics
-- 🏥 HIPAA Compliant Infrastructure
-
-## 💻 Technology Stack
-
-- **Frontend**: Next.js 14
-- **Backend**: Supabase
-- **Database**: PostgreSQL
-- **Authentication**: Supabase Auth
-- **Styling**: Tailwind CSS
-- **Language**: TypeScript
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- npm 9+
+## 🔧 Požadavky
 - Docker
-- Supabase CLI
+- Docker Compose
+- Make (volitelné)
+- Git
 
-### Installation Steps
+## 🛠 Instalace a Konfigurace
 
+### 1. Klonování repozitáře
 ```bash
-# Clone the repository
-git clone https://github.com/NeuronaLabs/platform.git
-cd platform
+git clone https://github.com/vaše-organizace/neuronalabs.git
+cd neuronalabs
+```
 
-# Install dependencies
-npm install
-
-# Copy environment template
+### 2. Příprava prostředí
+```bash
+# Kopírování konfiguračního souboru
 cp .env.example .env
 
-# Initialize Supabase
-supabase start
+# Úprava konfigurace podle vašeho prostředí
+nano .env
 ```
 
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL | ✅ |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Supabase Anon Key | ✅ |
-| `SUPABASE_SERVICE_KEY` | Supabase Service Role Key | ✅ |
-| `NEXT_PUBLIC_AUTH_CALLBACK_URL` | Authentication Callback URL | ✅ |
-
-### Development
-
+### 3. Inicializace projektu
 ```bash
-# Start development server
-npm run dev
+# Příprava projektu (generování tajných klíčů, stažení obrazů)
+make setup
+
+# Spuštění všech služeb
+make up
 ```
 
-### Production Build
+## 🌐 Dostupné služby
 
+| Služba | URL | Popis |
+|--------|-----|-------|
+| Frontend | `http://localhost:3000` | Hlavní uživatelské rozhraní |
+| Backend API | `http://localhost:5000` | GraphQL API endpoint |
+| Supabase Studio | `http://localhost:3020` | Správa databáze |
+| Orthanc DICOM | `http://localhost:8042` | DICOM server |
+| OHIF Viewer | `http://localhost:3010` | Prohlížeč DICOM snímků |
+| Prometheus | `http://localhost:9090` | Monitoring |
+
+## 📋 Dostupné Make příkazy
+
+- `make setup`: Inicializace projektu
+- `make up`: Spuštění služeb
+- `make down`: Zastavení služeb
+- `make restart`: Restart služeb
+- `make logs`: Zobrazení logů
+- `make migrate`: Migrace databáze
+- `make test`: Spuštění testů
+- `make clean`: Vyčištění Docker prostoru
+
+## 🔐 Konfigurace a Zabezpečení
+
+### Tajné klíče
+Projekt automaticky generuje tajné klíče pomocí `make secrets`:
+- JWT token
+- Supabase service key
+
+### Proměnné prostředí
+Všechny konfigurace jsou spravovány přes `.env` soubor. Viz `.env.example` pro referenci.
+
+## 📊 Databázové schéma
+
+### Tabulky
+- `patients`: Osobní informace pacientů
+- `diagnoses`: Lékařské diagnózy a léčby
+- `dicom_studies`: Metadata DICOM studií
+
+### Bezpečnostní funkce
+- Automatické aktualizace timestampů
+- Řízení přístupu na úrovni řádků (RLS)
+- Jedinečné constrainty a validace
+
+## 🧪 Testování
+
+### Spuštění testů
 ```bash
-# Build for production
-npm run build
-
-# Start production server
-npm start
+make test
 ```
 
-## 🧪 Testing
+## 🚢 Nasazení
 
-```bash
-# Run unit tests
-npm test
+### Produkční prostředí
+- Konfigurace pro produkci v `.env`
+- Podpora nasazení přes Docker Compose
+- Škálovatelná architektura mikroslužeb
 
-# Run end-to-end tests
-npm run test:e2e
-```
+## 🤝 Přispívání
 
-## 🔒 Security Features
+1. Forkněte repozitář
+2. Vytvořte feature branch
+3. Commitněte změny
+4. Pushněte branch
+5. Vytvořte Pull Request
 
-- Row Level Security (RLS)
-- Multi-factor Authentication
-- Comprehensive Input Validation
-- Secure JWT Token Management
+## 📝 Licence
 
-## 📊 Monitoring & Logging
+[Doplňte licenční informace]
 
-- Integrated Supabase Logging
-- Optional Sentry Integration
-- Performance Metrics Tracking
+## 🆘 Podpora
 
-## 🤝 Contributing
+Pro technickou podporu a dotazy kontaktujte [váš kontakt]
 
-1. Fork the Repository
-2. Create Feature Branch
-3. Commit Changes
-4. Push to Branch
-5. Open Pull Request
+## 🔮 Budoucí Plány
 
-### Contribution Guidelines
-
-- Follow TypeScript Best Practices
-- Write Comprehensive Tests
-- Maintain Clean, Readable Code
-- Update Documentation
-
-## 📜 License
-
-MIT License
-
-## 📞 Contact
-
-**Petr Sovadina**
-- Email: petr.sovadina@neuronalabs.cz
-- LinkedIn: [Profile Link]
-
-## 🌍 Project Links
-
-- **GitHub**: [Repository URL]
-- **Documentation**: [Docs URL]
-- **Live Demo**: [Demo URL]
+- Implementace komplexního logování
+- Nastavení monitorovacích dashboardů
+- Penetrační testování
+- Vytvoření detailní uživatelské dokumentace
 
 ---
 
-**Built with ❤️ by NeuronaLabs Team**
+**Poznámka**: Před použitím si prosím pečlivě prostudujte konfigurační soubory a nastavte všechna potřebná proměnná prostředí.

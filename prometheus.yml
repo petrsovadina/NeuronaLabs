@@ -2,17 +2,35 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets: ['localhost:9093']
+
+rule_files:
+  - 'alert_rules.yml'
+
 scrape_configs:
   - job_name: 'backend'
+    metrics_path: '/metrics'
     static_configs:
       - targets: ['backend:5000']
+    
+  - job_name: 'frontend'
     metrics_path: '/metrics'
-
-  - job_name: 'dicom-server'
     static_configs:
-      - targets: ['dicom-server:8042']
+      - targets: ['frontend:3000']
+    
+  - job_name: 'orthanc'
     metrics_path: '/metrics'
-
-  - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['orthanc:8042']
+    
+  - job_name: 'postgres'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['postgres:5432']
+    
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']

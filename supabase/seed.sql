@@ -27,52 +27,36 @@ INSERT INTO auth.users (
     now()
 );
 
--- Vložení testovacího lékaře do users
-INSERT INTO users (
+-- Vložení testovacích lékařů
+INSERT INTO doctors (
     id,
     first_name,
     last_name,
-    email,
-    phone,
-    role,
     specialization,
-    license_number
+    email,
+    phone_number
 ) VALUES (
     'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
     'Jan',
     'Novák',
-    'admin@admin.cz',
-    '+420123456789',
-    'doctor'::user_role,
     'Neurologie',
-    'LEK123456'
+    'admin@admin.cz',
+    '+420123456789'
 );
 
 -- Vložení testovacích pacientů
 INSERT INTO patients (
     id,
-    doctor_id,
-    medical_record_number,
     first_name,
     last_name,
     birth_date,
     gender,
     email,
-    phone,
-    address,
-    city,
-    postal_code,
-    country,
-    status,
-    insurance_number,
-    insurance_company,
-    insurance_status,
-    notes
+    phone_number,
+    address
 )
 SELECT 
     gen_random_uuid(),
-    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
-    'MRN' || LPAD(CAST(generate_series AS text), 6, '0'),
     'Pacient' || generate_series,
     'Příjmení' || generate_series,
     '1980-01-01'::date + (generate_series || ' years')::interval,
@@ -83,74 +67,146 @@ SELECT
     END,
     'pacient' || generate_series || '@example.com',
     '+420' || LPAD(CAST((900000000 + generate_series) AS text), 9, '0'),
-    'Ulice ' || generate_series,
-    'Praha',
-    '110 00',
-    'Czech Republic',
-    CASE (random() * 2)::integer
-        WHEN 0 THEN 'active'::patient_status
-        WHEN 1 THEN 'inactive'::patient_status
-        ELSE 'archived'::patient_status
-    END,
-    LPAD(CAST((1000000000 + generate_series) AS text), 10, '0'),
-    'VZP',
-    'active'::insurance_status,
-    'Testovací pacient ' || generate_series
+    jsonb_build_object(
+        'street', 'Ulice ' || generate_series,
+        'city', 'Praha',
+        'postal_code', '110 00',
+        'country', 'Czech Republic'
+    )
 FROM generate_series(1, 10);
 
 -- Vložení testovacích diagnóz
 INSERT INTO diagnoses (
-    id,
     patient_id,
     doctor_id,
-    diagnosis_code,
+    diagnosis_date,
+    diagnosis_type,
     description,
-    status,
-    notes
+    severity,
+    treatment_plan
 )
 SELECT 
-    gen_random_uuid(),
     p.id,
     'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
-    'ICD-' || LPAD(CAST(generate_series AS text), 3, '0'),
-    'Diagnóza ' || generate_series,
-    CASE (random() * 2)::integer
-        WHEN 0 THEN 'preliminary'::diagnosis_status
-        WHEN 1 THEN 'confirmed'::diagnosis_status
-        ELSE 'archived'::diagnosis_status
+    NOW() - (generate_series || ' days')::interval,
+    CASE (random() * 3)::integer
+        WHEN 0 THEN 'Neurologické vyšetření'
+        WHEN 1 THEN 'Kardiologické vyšetření'
+        ELSE 'Ortopedické vyšetření'
     END,
-    'Poznámka k diagnóze ' || generate_series
-FROM generate_series(1, 20), (SELECT id FROM patients LIMIT 1) p;
-
--- Vložení testovacích vyšetření
-WITH patient_ids AS (
-    SELECT id FROM patients
-)
-INSERT INTO studies (
-    id,
-    patient_id,
-    doctor_id,
-    study_type,
-    study_date,
-    description,
-    dicom_study_uid,
-    storage_path,
-    notes
-)
-SELECT 
-    gen_random_uuid(),
-    p.id,
-    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
+    'Testovací diagnóza pro pacienta ' || generate_series,
     CASE (random() * 4)::integer
-        WHEN 0 THEN 'mri'::study_type
-        WHEN 1 THEN 'ct'::study_type
-        WHEN 2 THEN 'xray'::study_type
-        WHEN 3 THEN 'ultrasound'::study_type
-        ELSE 'other'::study_type
+        WHEN 0 THEN 'low'
+        WHEN 1 THEN 'medium'
+        WHEN 2 THEN 'high'
+        ELSE 'critical'
     END,
-    now() - (generate_series || ' days')::interval,
-    'Vyšetření ' || generate_series,
-    '1.2.3.4.' || uuid_generate_v4(),
-    '/storage/studies/' || generate_series,
-    'Poznámka k vyšetření ' || generate_series
-FROM generate_series(1, 15), (SELECT id FROM patients LIMIT 1) p;
+    'Doporučeno další vyšetření'
+FROM patients p, generate_series(1, 10);
+
+-- Vložení testovacích DICOM studií
+INSERT INTO dicom_studies (
+    patient_id,
+    study_instance_uid,
+    study_date,
+    modality,
+    study_description,
+    study_location
+)
+SELECT 
+    p.id,
+    'UID.' || gen_random_uuid()::text,
+    NOW() - (generate_series || ' days')::interval,
+    CASE (random() * 3)::integer
+        WHEN 0 THEN 'CT'
+        WHEN 1 THEN 'MRI'
+        ELSE 'X-RAY'
+    END,
+    'Testovací DICOM studie pro pacienta ' || generate_series,
+    '/storage/dicom/' || gen_random_uuid()::text
+FROM patients p, generate_series(1, 10);
+
+-- Vložení testovacích léků
+INSERT INTO medications (
+    patient_id,
+    prescribed_by,
+    medication_name,
+    dosage,
+    prescription_date,
+    start_date,
+    end_date,
+    instructions
+)
+SELECT 
+    p.id,
+    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
+    CASE (random() * 5)::integer
+        WHEN 0 THEN 'Paralen'
+        WHEN 1 THEN 'Ibuprofen'
+        WHEN 2 THEN 'Aspirin'
+        WHEN 3 THEN 'Amoxicilin'
+        ELSE 'Brufen'
+    END,
+    CASE (random() * 3)::integer
+        WHEN 0 THEN '500mg'
+        WHEN 1 THEN '250mg'
+        ELSE '1000mg'
+    END,
+    NOW() - (generate_series || ' days')::interval,
+    NOW() - (generate_series || ' days')::interval,
+    NOW() + ((generate_series * 7) || ' days')::interval,
+    'Užívat dle potřeby'
+FROM patients p, generate_series(1, 10);
+
+-- Vložení testovacích alergií
+INSERT INTO allergies (
+    patient_id,
+    allergen,
+    severity,
+    reaction,
+    first_observed_date
+)
+SELECT 
+    p.id,
+    CASE (random() * 5)::integer
+        WHEN 0 THEN 'Prach'
+        WHEN 1 THEN 'Pyl'
+        WHEN 2 THEN 'Mléko'
+        WHEN 3 THEN 'Arašídy'
+        ELSE 'Latex'
+    END,
+    CASE (random() * 4)::integer
+        WHEN 0 THEN 'mild'
+        WHEN 1 THEN 'moderate'
+        WHEN 2 THEN 'severe'
+        ELSE 'life-threatening'
+    END,
+    'Testovací alergická reakce',
+    NOW() - (generate_series || ' days')::interval
+FROM patients p, generate_series(1, 10);
+
+-- Vložení testovacích lékařských záznamů
+INSERT INTO medical_records (
+    patient_id,
+    doctor_id,
+    record_date,
+    record_type,
+    description,
+    notes
+)
+SELECT 
+    p.id,
+    'a0d4e39c-4f1a-4d22-8293-7b4ff17b5e69',
+    NOW() - (generate_series || ' days')::interval,
+    CASE (random() * 4)::integer
+        WHEN 0 THEN 'Pravidelná prohlídka'
+        WHEN 1 THEN 'Kontrolní vyšetření'
+        WHEN 2 THEN 'Předoperační vyšetření'
+        ELSE 'Následná péče'
+    END,
+    'Testovací lékařský záznam pro pacienta ' || generate_series,
+    jsonb_build_object(
+        'additional_info', 'Žádné významné poznámky',
+        'recommendations', 'Další kontrola za 6 měsíců'
+    )
+FROM patients p, generate_series(1, 10);

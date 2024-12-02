@@ -1,31 +1,43 @@
-# Build stage
-FROM node:23-alpine AS builder
+# Použití Node.js LTS image pro build
+FROM node:20-alpine AS build
 
+# Nastavení pracovního adresáře
 WORKDIR /app
 
-# Copy package files
+# Kopírování package souborů
 COPY package*.json ./
-RUN npm install
 
-# Copy source code
+# Instalace závislostí
+RUN npm ci
+
+# Kopírování zdrojových kódů
 COPY . .
 
-# Build the application
+# Build Next.js aplikace
 RUN npm run build
 
-# Runtime stage
-FROM node:23-alpine
+# Produkční image
+FROM node:20-alpine AS production
+
+# Nastavení pracovního adresáře
 WORKDIR /app
 
-# Copy built assets from builder
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/public ./public
+# Kopírování build souborů
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/next.config.js ./
+COPY --from=build /app/public ./public
+COPY --from=build /app/.next ./.next
 
-# Set environment variables
+# Instalace produkčních závislostí
+RUN npm ci --only=production
+
+# Nastavení proměnných prostředí
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV NEXT_PUBLIC_API_URL=http://backend:80
+ENV NEXT_PUBLIC_OHIF_URL=http://ohif:3000
 
+# Expozice portu
 EXPOSE 3000
+
+# Spuštění Next.js aplikace
 CMD ["npm", "start"]

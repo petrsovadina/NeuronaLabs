@@ -14,6 +14,10 @@ using HotChocolate.AspNetCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using NeuronaLabs.HealthChecks;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
+using NeuronaLabs.Repositories;
+using NeuronaLabs.Validators;
+using FluentValidation;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,23 +41,29 @@ builder.Services.Configure<SupabaseOptions>(options =>
 });
 
 // Database
-builder.Services.AddDbContext<NeuronaLabsContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .UseSnakeCaseNamingConvention());
 
-// Add health checks
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection"), 
-        name: "Database",
-        failureStatus: HealthStatus.Unhealthy,
-        tags: new[] { "db" });
-
-// Authentication
-var jwtSecret = builder.Configuration["JWT:Secret"];
-if (string.IsNullOrEmpty(jwtSecret))
+// Identity konfigurace
+builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 {
-    throw new InvalidOperationException("JWT:Secret is not configured");
-}
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequiredLength = 8;
 
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+
+    options.User.RequireUniqueEmail = true;
+    options.SignIn.RequireConfirmedEmail = false;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
+
+// JWT Autentizace
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -63,13 +73,40 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
-            ValidAudience = builder.Configuration["JWT:ValidAudience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]))
         };
     });
 
-builder.Services.AddAuthorization();
+// Autorizace na základě rolí
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => 
+        policy.RequireRole(UserRole.Admin.ToString()));
+    
+    options.AddPolicy("DoctorOnly", policy => 
+        policy.RequireRole(
+            UserRole.Admin.ToString(), 
+            UserRole.Doctor.ToString()));
+    
+    options.AddPolicy("PatientOnly", policy => 
+        policy.RequireRole(
+            UserRole.Admin.ToString(), 
+            UserRole.Doctor.ToString(), 
+            UserRole.Patient.ToString()));
+});
+
+// Registrace AuthService
+builder.Services.AddScoped<AuthService>();
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection"), 
+        name: "Database",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: new[] { "db" });
 
 // Add response compression
 builder.Services.AddResponseCompression(options =>
@@ -78,37 +115,69 @@ builder.Services.AddResponseCompression(options =>
 });
 
 // CORS
-var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? 
-    Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowedOrigins", policy =>
+    options.AddPolicy("AllowAll", builder =>
     {
-        policy.WithOrigins(corsOrigins)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
     });
 });
 
-// GraphQL
+// Registrace repozitářů
+builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
+builder.Services.AddScoped<IPatientRepository, PatientRepository>();
+
+// Registrace service vrstvy
+builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IDiagnosisService, DiagnosisService>();
+builder.Services.AddScoped<IDicomStudyService, DicomStudyService>();
+
+// Přidání validátorů
+builder.Services.AddScoped<IValidator<Patient>, PatientValidator>();
+builder.Services.AddScoped<IValidator<Diagnosis>, DiagnosisValidator>();
+builder.Services.AddScoped<IValidator<DicomStudy>, DicomStudyValidator>();
+
+// Konfigurace HttpClient pro Orthanc
+builder.Services.AddHttpClient<IDicomService, DicomService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Orthanc:BaseUrl"]);
+    client.DefaultRequestHeaders.Accept.Add(
+        new MediaTypeWithQualityHeaderValue("application/json"));
+
+    var username = builder.Configuration["Orthanc:Username"];
+    var password = builder.Configuration["Orthanc:Password"];
+    
+    if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+    {
+        var byteArray = Encoding.ASCII.GetBytes($"{username}:{password}");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Basic", Convert.ToBase64String(byteArray));
+    }
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+})
+.SetHandlerLifetime(TimeSpan.FromMinutes(5));
+
+// GraphQL konfigurace
 builder.Services
     .AddGraphQLServer()
     .AddQueryType<Query>()
     .AddMutationType<Mutation>()
-    .AddAuthorization()
+    .AddType<PatientQueries>()
+    .AddType<DicomStudyQueries>()
     .AddFiltering()
-    .AddSorting()
-    .AddProjections()
-    .AddErrorFilter<GraphQLErrorFilter>();
+    .AddSorting();
 
-// Services
+// Globální middleware pro autentizaci
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IPatientService, PatientService>();
-builder.Services.AddScoped<IDiagnosticDataService, DiagnosticDataService>();
-builder.Services.AddScoped<IDicomStudyService, DicomStudyService>();
-builder.Services.AddScoped<ISupabaseService, SupabaseService>();
+builder.Services.AddScoped<GlobalStateMiddleware>();
+
+// Přidání vlastního error filtru
+builder.Services.AddScoped<GraphQLErrorFilter>();
 
 // Add logging
 builder.Logging.ClearProviders();
@@ -130,6 +199,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseResponseCompression();
@@ -137,7 +208,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-app.UseCors("AllowedOrigins");
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -151,7 +222,7 @@ app.MapHealthChecks("/health");
 // Ensure database is created and migrations are applied
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<NeuronaLabsContext>();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     context.Database.Migrate();
 }
 

@@ -1,11 +1,25 @@
 export interface Patient {
-  id?: string;
-  name: string;
-  dateOfBirth: string;
-  gender: 'male' | 'female' | 'other';
-  lastDiagnosis?: string;
-  createdAt?: string;
-  updatedAt?: string;
+    id: string;
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    gender: 'male' | 'female' | 'other';
+    email: string;
+    phoneNumber?: string;
+    address?: {
+        street: string;
+        city: string;
+        postalCode: string;
+        country: string;
+    };
+    medicalRecordNumber?: string;
+    insuranceProvider?: string;
+    allergies?: string[];
+    emergencyContact?: {
+        name: string;
+        relationship: string;
+        phoneNumber: string;
+    };
 }
 
-export type PatientFormData = Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>;
+export type PatientFormData = Omit<Patient, 'id'>;

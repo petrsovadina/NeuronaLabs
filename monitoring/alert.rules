@@ -1,0 +1,62 @@
+groups:
+- name: backend_alerts
+  rules:
+  - alert: BackendHighCPUUsage
+    expr: process_cpu_usage{job="neuronalabs-backend"} > 0.8
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Backend vysoké využití CPU"
+      description: "Backend překračuje 80% využití CPU po dobu 5 minut"
+
+  - alert: BackendHighMemoryUsage
+    expr: process_memory_usage{job="neuronalabs-backend"} > 0.9
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Backend vysoké využití paměti"
+      description: "Backend překračuje 90% využití paměti po dobu 5 minut"
+
+- name: database_alerts
+  rules:
+  - alert: PostgreSQLHighConnections
+    expr: pg_stat_activity_count{job="postgres"} > 50
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Vysoký počet PostgreSQL připojení"
+      description: "Počet databázových připojení překračuje 50 po dobu 10 minut"
+
+  - alert: PostgreSQLReplicationLag
+    expr: pg_replication_lag{job="postgres"} > 60
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Vysoká prodleva replikace PostgreSQL"
+      description: "Replikační prodleva překračuje 1 minutu"
+
+- name: dicom_alerts
+  rules:
+  - alert: OrthanckHighDiskUsage
+    expr: orthanc_disk_usage_percent{job="orthanc"} > 90
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Vysoké využití disku Orthanc"
+      description: "Využití disku Orthanc překračuje 90%"
+
+- name: redis_alerts
+  rules:
+  - alert: RedisHighMemoryUsage
+    expr: redis_memory_used_percent{job="redis"} > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Vysoké využití paměti Redis"
+      description: "Redis překračuje 80% využití paměti po dobu 5 minut"

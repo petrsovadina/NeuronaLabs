@@ -1,0 +1,125 @@
+type Patient {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    birthDate: Date!
+    personalId: String
+    gender: String
+    email: String
+    phone: String
+    address: String
+    insuranceNumber: String
+    insuranceProvider: String
+    diagnoses: [Diagnosis!]
+    dicomStudies: [DicomStudy!]
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type Doctor {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    specialization: String
+    licenseNumber: String
+}
+
+type Diagnosis {
+    id: ID!
+    studyId: ID!
+    doctorId: ID!
+    diagnosisText: String!
+    findings: String
+    recommendations: String
+    createdAt: DateTime!
+}
+
+type DicomStudy {
+    id: ID!
+    patientId: ID!
+    doctorId: ID!
+    dicomUid: String!
+    modality: String!
+    studyDate: DateTime!
+    accessionNumber: String
+    studyDescription: String
+    status: String!
+    numberOfImages: Int!
+    studySize: Int!
+    metadata: JSON
+    images: [DicomImage!]
+}
+
+type DicomImage {
+    id: ID!
+    studyId: ID!
+    instanceNumber: Int!
+    fileName: String!
+    imageType: String
+    thumbnailUrl: String
+    fullResolutionUrl: String
+}
+
+input CreatePatientInput {
+    firstName: String!
+    lastName: String!
+    birthDate: Date!
+    personalId: String
+    gender: String
+    email: String
+    phone: String
+    address: String
+    insuranceNumber: String
+    insuranceProvider: String
+}
+
+input UpdatePatientInput {
+    id: ID!
+    firstName: String
+    lastName: String
+    email: String
+    phone: String
+    address: String
+    insuranceNumber: String
+    insuranceProvider: String
+}
+
+input CreateDiagnosisInput {
+    patientId: ID!
+    doctorId: ID!
+    diagnosisText: String!
+    findings: String
+    recommendations: String
+}
+
+input CreateDicomStudyInput {
+    patientId: ID!
+    doctorId: ID!
+    modality: String!
+    studyDescription: String
+    dicomUid: String!
+}
+
+type Query {
+    patients(page: Int = 1, pageSize: Int = 10): [Patient!]!
+    patient(id: ID!): Patient
+    patientByPersonalId(personalId: String!): Patient
+    dicomStudies(patientId: ID!, page: Int = 1, pageSize: Int = 10): [DicomStudy!]!
+    dicomStudy(id: ID!): DicomStudy
+}
+
+type Mutation {
+    createPatient(input: CreatePatientInput!): Patient!
+    updatePatient(input: UpdatePatientInput!): Patient!
+    deletePatient(id: ID!): Boolean!
+    
+    createDiagnosis(input: CreateDiagnosisInput!): Diagnosis!
+    createDicomStudy(input: CreateDicomStudyInput!): DicomStudy!
+    uploadDicomImages(studyId: ID!, files: [Upload!]!): [DicomImage!]!
+}
+
+scalar Date
+scalar DateTime
+scalar JSON
+scalar Upload

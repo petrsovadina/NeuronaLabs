@@ -1,0 +1,26 @@
+{
+    "servers": {
+        "dicomWeb": [
+            {
+                "name": "Orthanc",
+                "wadoUriRoot": "http://orthanc:8042/wado",
+                "qidoRoot": "http://orthanc:8042/dicom-web",
+                "wadoRoot": "http://orthanc:8042/dicom-web",
+                "qidoSupportsReferencedMaterials": false,
+                "supportsReject": false,
+                "imageRendering": "wadors",
+                "thumbnailRendering": "wadors"
+            }
+        ]
+    },
+    "hotkeys": {
+        "tool": {
+            "Pan": "P",
+            "Zoom": "Z",
+            "Wwwc": "W",
+            "Measurements": "M"
+        }
+    },
+    "defaultServiceType": "dicomWeb",
+    "showStudyList": true
+}

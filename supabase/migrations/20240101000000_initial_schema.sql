@@ -1,17 +1,35 @@
--- Enable necessary extensions
+-- Povolit rozšíření pro UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Set up necessary permissions
-ALTER ROLE anon SET search_path TO public;
-ALTER ROLE authenticated SET search_path TO public;
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated;
+-- Funkce pro automatickou aktualizaci timestampů
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Nastavení Row Level Security pro všechny tabulky
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated, service_role;
+
+-- Vytvoření role pro různé úrovně přístupu
+DO $$
+BEGIN
+    -- Vytvoření role pro lékaře
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'doctor') THEN
+        CREATE ROLE doctor;
+    END IF;
+
+    -- Vytvoření role pro pacienty
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'patient') THEN
+        CREATE ROLE patient;
+    END IF;
+END $$;
+
+-- Nastavení základních schémat pro autentizaci a zabezpečení
+GRANT USAGE ON SCHEMA public TO authenticated, service_role, doctor, patient;
+GRANT ALL ON SCHEMA public TO service_role;
 
 -- Create enum types if they don't exist
 DO $$ BEGIN
