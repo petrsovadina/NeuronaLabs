@@ -7,10 +7,10 @@ namespace NeuronaLabs.Middleware
 {
     public class RequestLoggingMiddleware
     {
-        private readonly RequestDelegate _next;
+        private readonly Microsoft.AspNetCore.Http.RequestDelegate _next;
         private readonly ILogger<RequestLoggingMiddleware> _logger;
 
-        public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
+        public RequestLoggingMiddleware(Microsoft.AspNetCore.Http.RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
         {
             _next = next;
             _logger = logger;

@@ -2,6 +2,7 @@ using HotChocolate;
 using HotChocolate.Types;
 using NeuronaLabs.Models;
 using NeuronaLabs.Services;
+using NeuronaLabs.GraphQL.Types.Inputs;
 using System.Threading.Tasks;
 
 namespace NeuronaLabs.GraphQL.Resolvers

@@ -1,363 +1,137 @@
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using NeuronaLabs.Data;
-using NeuronaLabs.Models.Dto;
+using NeuronaLabs.Models;
 using NeuronaLabs.Models.Identity;
+using BC = BCrypt.Net.BCrypt;
 
-namespace NeuronaLabs.Services.Implementation;
-
-public class AuthService : IAuthService
+namespace NeuronaLabs.Services
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly IConfiguration _configuration;
-    private readonly ApplicationDbContext _context;
-    private readonly ILogger<AuthService> _logger;
-
-    public AuthService(
-        UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
-        IConfiguration configuration,
-        ApplicationDbContext context,
-        ILogger<AuthService> logger)
+    public class AuthService : IAuthService
     {
-        _userManager = userManager;
-        _signInManager = signInManager;
-        _configuration = configuration;
-        _context = context;
-        _logger = logger;
-    }
+        private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _dbContext;
 
-    public async Task<AuthResult> RegisterAsync(UserRegistrationDto registrationDto)
-    {
-        try
+        public AuthService(IConfiguration configuration, ApplicationDbContext dbContext)
         {
-            var user = new ApplicationUser
+            _configuration = configuration;
+            _dbContext = dbContext;
+        }
+
+        public async Task<AuthResult> RegisterAsync(string email, string password, NeuronaLabs.Models.Identity.UserRole role)
+        {
+            // Kontrola existence uživatele
+            if (_dbContext.Users.Any(u => u.Email == email))
             {
-                UserName = registrationDto.Email,
-                Email = registrationDto.Email,
-                FirstName = registrationDto.FirstName,
-                LastName = registrationDto.LastName,
-                UserRole = registrationDto.UserRole,
+                return new AuthResult { Success = false, Message = "Uživatel s tímto emailem již existuje." };
+            }
+
+            // Hashování hesla
+            var hashedPassword = BC.HashPassword(password);
+
+            // Vytvoření uživatele
+            var user = new NeuronaLabs.Models.User
+            {
+                Email = email,
+                PasswordHash = hashedPassword,
+                Role = role,
                 CreatedAt = DateTime.UtcNow
             };
 
-            var result = await _userManager.CreateAsync(user, registrationDto.Password);
+            _dbContext.Users.Add(user);
+            await _dbContext.SaveChangesAsync();
 
-            if (!result.Succeeded)
-            {
-                return new AuthResult
-                {
-                    IsSuccess = false,
-                    ErrorMessage = string.Join(", ", result.Errors.Select(e => e.Description))
-                };
-            }
-
-            // Přiřazení role
-            await _userManager.AddToRoleAsync(user, user.UserRole.ToString());
-
+            // Generování tokenu
             var token = GenerateJwtToken(user);
 
-            _logger.LogInformation($"Registrován uživatel: {user.Email}");
-
-            return new AuthResult
-            {
-                IsSuccess = true,
-                UserId = user.Id.ToString(),
-                AccessToken = token.Token,
-                RefreshToken = token.RefreshToken,
-                ExpiresAt = token.Expiration
+            return new AuthResult 
+            { 
+                Success = true, 
+                Token = token,
+                User = user 
             };
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při registraci: {ex.Message}");
-            return new AuthResult
-            {
-                IsSuccess = false,
-                ErrorMessage = "Registrace selhala"
-            };
-        }
-    }
 
-    public async Task<AuthResult> LoginAsync(UserLoginDto loginDto)
-    {
-        try
+        public async Task<AuthResult> LoginAsync(string email, string password)
         {
-            var user = await _userManager.FindByEmailAsync(loginDto.Email);
+            // Nalezení uživatele
+            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
             if (user == null)
             {
-                return new AuthResult
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Uživatel nenalezen"
-                };
+                return new AuthResult { Success = false, Message = "Neplatné přihlašovací údaje." };
             }
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, lockoutOnFailure: true);
-
-            if (!result.Succeeded)
+            // Ověření hesla
+            if (!BC.Verify(password, user.PasswordHash))
             {
-                return new AuthResult
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Neplatné přihlašovací údaje"
-                };
+                return new AuthResult { Success = false, Message = "Neplatné přihlašovací údaje." };
             }
 
+            // Generování tokenu
             var token = GenerateJwtToken(user);
 
-            user.LastLoginAt = DateTime.UtcNow;
-            await _userManager.UpdateAsync(user);
-
-            _logger.LogInformation($"Přihlášen uživatel: {user.Email}");
-
-            return new AuthResult
-            {
-                IsSuccess = true,
-                UserId = user.Id.ToString(),
-                AccessToken = token.Token,
-                RefreshToken = token.RefreshToken,
-                ExpiresAt = token.Expiration
+            return new AuthResult 
+            { 
+                Success = true, 
+                Token = token,
+                User = user 
             };
         }
-        catch (Exception ex)
+
+        private string GenerateJwtToken(NeuronaLabs.Models.User user)
         {
-            _logger.LogError(ex, $"Chyba při přihlašování: {ex.Message}");
-            return new AuthResult
+            var securityKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
             {
-                IsSuccess = false,
-                ErrorMessage = "Přihlášení selhalo"
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(2),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
-    }
 
-    public async Task<AuthResult> RefreshTokenAsync(string refreshToken)
-    {
-        try
+        public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
         {
-            var user = await _userManager.FindByEmailAsync(GetEmailFromToken(refreshToken));
-            if (user == null)
-            {
-                return new AuthResult
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Uživatel nenalezen"
-                };
-            }
-
-            var token = GenerateJwtToken(user);
-
-            _logger.LogInformation($"Obnoven token pro uživatele: {user.Email}");
-
-            return new AuthResult
-            {
-                IsSuccess = true,
-                UserId = user.Id.ToString(),
-                AccessToken = token.Token,
-                RefreshToken = token.RefreshToken,
-                ExpiresAt = token.Expiration
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při obnovení tokenu: {ex.Message}");
-            return new AuthResult
-            {
-                IsSuccess = false,
-                ErrorMessage = "Obnovení tokenu selhalo"
-            };
-        }
-    }
-
-    public async Task<bool> ChangePasswordAsync(string userId, string currentPassword, string newPassword)
-    {
-        try
-        {
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _dbContext.Users.FindAsync(userId);
             if (user == null)
             {
                 return false;
             }
 
-            var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
-            return result.Succeeded;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při změně hesla: {ex.Message}");
-            return false;
-        }
-    }
-
-    public async Task<bool> ResetPasswordAsync(string email)
-    {
-        try
-        {
-            var user = await _userManager.FindByEmailAsync(email);
-            if (user == null)
+            // Ověření stávajícího hesla
+            if (!BC.Verify(currentPassword, user.PasswordHash))
             {
                 return false;
             }
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            // Zde byste obvykle odeslali token e-mailem
+            // Nastavení nového hesla
+            user.PasswordHash = BC.HashPassword(newPassword);
+            await _dbContext.SaveChangesAsync();
+
             return true;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při resetování hesla: {ex.Message}");
-            return false;
-        }
     }
 
-    public async Task<bool> ConfirmEmailAsync(string userId, string token)
+    public class AuthResult
     {
-        try
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                return false;
-            }
-
-            var result = await _userManager.ConfirmEmailAsync(user, token);
-            return result.Succeeded;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při potvrzení emailu: {ex.Message}");
-            return false;
-        }
-    }
-
-    public async Task<bool> LockoutUserAsync(string userId)
-    {
-        try
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                return false;
-            }
-
-            var result = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(10));
-            return result.Succeeded;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při zablokování uživatele: {ex.Message}");
-            return false;
-        }
-    }
-
-    public async Task<bool> UnlockUserAsync(string userId)
-    {
-        try
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                return false;
-            }
-
-            var result = await _userManager.SetLockoutEndDateAsync(user, null);
-            return result.Succeeded;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při odblokování uživatele: {ex.Message}");
-            return false;
-        }
-    }
-
-    public async Task<ApplicationUser?> GetUserByIdAsync(string userId)
-    {
-        return await _userManager.FindByIdAsync(userId);
-    }
-
-    public async Task<ApplicationUser?> GetUserByEmailAsync(string email)
-    {
-        return await _userManager.FindByEmailAsync(email);
-    }
-
-    private (string Token, string RefreshToken, DateTime Expiration) GenerateJwtToken(ApplicationUser user)
-    {
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-            new Claim(ClaimTypes.Role, user.UserRole.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpirationInMinutes"]));
-
-        var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
-            claims: claims,
-            expires: expires,
-            signingCredentials: creds
-        );
-
-        var refreshToken = GenerateRefreshToken(user.Email!);
-
-        return (
-            new JwtSecurityTokenHandler().WriteToken(token),
-            refreshToken,
-            expires
-        );
-    }
-
-    private string GenerateRefreshToken(string email)
-    {
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:RefreshSecretKey"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var expires = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["Jwt:RefreshTokenExpirationInDays"]));
-
-        var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
-            claims: claims,
-            expires: expires,
-            signingCredentials: creds
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    private string GetEmailFromToken(string token)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(_configuration["Jwt:RefreshSecretKey"]!);
-
-        tokenHandler.ValidateToken(token, new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateIssuer = true,
-            ValidIssuer = _configuration["Jwt:Issuer"],
-            ValidateAudience = true,
-            ValidAudience = _configuration["Jwt:Audience"],
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        }, out SecurityToken validatedToken);
-
-        var jwtToken = (JwtSecurityToken)validatedToken;
-        return jwtToken.Claims.First(x => x.Type == JwtRegisteredClaimNames.Email).Value;
+        public bool Success { get; set; }
+        public string? Token { get; set; }
+        public string? Message { get; set; }
+        public NeuronaLabs.Models.User? User { get; set; }
     }
 }

@@ -32,10 +32,11 @@ export default function PatientsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const { loading, error, data } = useQuery(GET_PATIENTS);
 
-    const filteredPatients = data?.patients.filter((patient: Patient) => 
-        patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.lastName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPatients = data?.patients ? 
+        data.patients.filter((patient: Patient) => 
+            patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            patient.lastName.toLowerCase().includes(searchTerm.toLowerCase())
+        ) : [];
 
     if (loading) return <div>Načítání pacientů...</div>;
     if (error) return <div>Chyba při načítání pacientů: {error.message}</div>;
@@ -72,20 +73,28 @@ export default function PatientsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredPatients.map((patient: Patient) => (
-                                <TableRow key={patient.id}>
-                                    <TableCell>{patient.firstName}</TableCell>
-                                    <TableCell>{patient.lastName}</TableCell>
-                                    <TableCell>{new Date(patient.birthDate).toLocaleDateString()}</TableCell>
-                                    <TableCell>{patient.gender}</TableCell>
-                                    <TableCell>{patient.email}</TableCell>
-                                    <TableCell>
-                                        <Link href={`/patients/${patient.id}`}>
-                                            <Button variant="outline" size="sm">Detail</Button>
-                                        </Link>
+                            {filteredPatients.length > 0 ? (
+                                filteredPatients.map((patient: Patient) => (
+                                    <TableRow key={patient.id}>
+                                        <TableCell>{patient.firstName}</TableCell>
+                                        <TableCell>{patient.lastName}</TableCell>
+                                        <TableCell>{new Date(patient.birthDate).toLocaleDateString()}</TableCell>
+                                        <TableCell>{patient.gender}</TableCell>
+                                        <TableCell>{patient.email}</TableCell>
+                                        <TableCell>
+                                            <Link href={`/patients/${patient.id}`}>
+                                                <Button variant="outline" size="sm">Detail</Button>
+                                            </Link>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center">
+                                        Žádní pacienti nenalezeni
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>

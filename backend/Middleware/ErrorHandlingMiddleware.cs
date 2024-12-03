@@ -9,10 +9,10 @@ namespace NeuronaLabs.Middleware
 {
     public class ErrorHandlingMiddleware
     {
-        private readonly RequestDelegate _next;
+        private readonly Microsoft.AspNetCore.Http.RequestDelegate _next;
         private readonly ILogger<ErrorHandlingMiddleware> _logger;
 
-        public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
+        public ErrorHandlingMiddleware(Microsoft.AspNetCore.Http.RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
         {
             _next = next;
             _logger = logger;

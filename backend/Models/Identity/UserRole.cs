@@ -1,10 +1,10 @@
-namespace NeuronaLabs.Models.Identity;
-
-public enum UserRole
+namespace NeuronaLabs.Models.Identity
 {
-    Patient = 1,
-    Doctor = 2,
-    Nurse = 3,
-    Admin = 4,
-    SuperAdmin = 5
+    public enum UserRole
+    {
+        Admin,
+        Doctor,
+        Patient,
+        Technician
+    }
 }

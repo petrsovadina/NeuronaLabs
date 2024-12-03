@@ -1,18 +1,21 @@
 using System.Security.Claims;
-using HotChocolate.Resolvers;
+using Microsoft.AspNetCore.Http;
+using System.Threading.Tasks;
 
 namespace NeuronaLabs.Middleware;
 
 public class GlobalStateMiddleware
 {
+    private readonly Microsoft.AspNetCore.Http.RequestDelegate _next;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public GlobalStateMiddleware(IHttpContextAccessor httpContextAccessor)
+    public GlobalStateMiddleware(Microsoft.AspNetCore.Http.RequestDelegate next, IHttpContextAccessor httpContextAccessor)
     {
+        _next = next;
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public async ValueTask InvokeAsync(IMiddlewareContext context, MiddlewareDelegate next)
+    public async Task InvokeAsync(HttpContext context)
     {
         var httpContext = _httpContextAccessor.HttpContext;
         
@@ -24,20 +27,20 @@ public class GlobalStateMiddleware
 
             if (!string.IsNullOrEmpty(userId))
             {
-                context.ContextData["UserId"] = userId;
+                context.Items["UserId"] = userId;
             }
 
             if (!string.IsNullOrEmpty(userRole))
             {
-                context.ContextData["UserRole"] = userRole;
+                context.Items["UserRole"] = userRole;
             }
 
             if (!string.IsNullOrEmpty(userEmail))
             {
-                context.ContextData["UserEmail"] = userEmail;
+                context.Items["UserEmail"] = userEmail;
             }
         }
 
-        await next(context);
+        await _next(context);
     }
 }

@@ -1,40 +1,32 @@
 using HotChocolate;
-using HotChocolate.Types;
 using HotChocolate.Data;
 using NeuronaLabs.Models;
 using NeuronaLabs.Services.Interfaces;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace NeuronaLabs.GraphQL.Queries
 {
-    [ExtendObjectType(typeof(Query))]
+    [ExtendObjectType("Query")]
     public class PatientQueries
     {
-        [UseFiltering]
-        [UseSorting]
-        public async Task<IEnumerable<Patient>> GetAllPatients(
-            [Service] IPatientService patientService)
+        private readonly IPatientService _patientService;
+
+        public PatientQueries(IPatientService patientService)
         {
-            return await patientService.GetAllPatientsAsync();
+            _patientService = patientService;
         }
 
-        [UseFirstOrDefault]
-        [GraphQLName("patient")]
-        public async Task<Patient?> GetPatientById(
-            int id, 
-            [Service] IPatientService patientService)
+        [HotChocolate.Data.UseFiltering]
+        [HotChocolate.Data.UseSorting]
+        public async Task<IEnumerable<Patient>> GetPatients()
         {
-            return await patientService.GetPatientByIdAsync(id);
+            return await _patientService.GetAllPatientsAsync();
         }
 
-        [UseFiltering]
-        [UseSorting]
-        [GraphQLName("patients")]
-        public async Task<IEnumerable<Patient>> SearchPatients(
-            string? searchTerm, 
-            [Service] IPatientService patientService)
+        public async Task<Patient> GetPatientById(Guid id)
         {
-            return await patientService.SearchPatientsAsync(searchTerm);
+            return await _patientService.GetPatientByIdAsync(id);
         }
     }
 }

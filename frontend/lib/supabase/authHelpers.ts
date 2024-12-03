@@ -1,16 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
-import { Database } from './database.types';
+import { Database } from '@/types/supabase';
 
-// Bezpečnostní kontrola proměnných prostředí
+// Validate environment variables
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   throw new Error(
-    'NEXT_PUBLIC_SUPABASE_URL is not set in environment variables'
+    'NEXT_PUBLIC_SUPABASE_URL is not set in environment variables. ' +
+    'Please check your .env file and ensure the Supabase project URL is correctly configured.'
   );
 }
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   throw new Error(
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY is not set in environment variables'
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY is not set in environment variables. ' +
+    'Please check your .env file and ensure the Supabase anonymous key is correctly configured.'
   );
 }
 

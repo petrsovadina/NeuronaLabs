@@ -1,52 +1,65 @@
 using HotChocolate;
-using HotChocolate.Types;
-using NeuronaLabs.Services;
+using HotChocolate.AspNetCore.Authorization;
 using NeuronaLabs.Models;
+using NeuronaLabs.Models.Ohif;
+using NeuronaLabs.Services.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace NeuronaLabs.GraphQL.Queries;
 
-[ExtendObjectType(Name = "Query")]
+[ExtendObjectType("Query")]
 public class OhifQueries
 {
-    [Authorize(Policy = "DoctorOnly")]
-    public async Task<OhifStudyConfiguration> GetOhifStudyConfiguration(
-        [Service] IDicomService dicomService,
-        [Service] IDicomStudyRepository dicomStudyRepository,
-        string studyInstanceUid)
-    {
-        var dicomStudy = await dicomStudyRepository.GetByStudyInstanceUidAsync(studyInstanceUid);
-        
-        if (dicomStudy == null)
-        {
-            throw new ArgumentException($"Studie s UID {studyInstanceUid} nebyla nalezena.");
-        }
+    private readonly IDicomStudyRepository _dicomStudyRepository;
+    private readonly IDicomService _dicomService;
 
-        return await dicomService.GenerateOhifStudyConfiguration(dicomStudy);
+    public OhifQueries(
+        IDicomStudyRepository dicomStudyRepository,
+        IDicomService dicomService)
+    {
+        _dicomStudyRepository = dicomStudyRepository;
+        _dicomService = dicomService;
     }
 
     [Authorize(Policy = "DoctorOnly")]
-    public async Task<IEnumerable<OhifStudyConfiguration>> GetPatientOhifStudies(
-        [Service] IDicomService dicomService,
-        [Service] IDicomStudyRepository dicomStudyRepository,
-        Guid patientId)
+    public async Task<OhifStudyConfiguration> GetOhifStudyConfiguration(string studyInstanceUid)
     {
-        var dicomStudies = await dicomStudyRepository.GetByPatientIdAsync(patientId);
-        
-        var ohifConfigurations = new List<OhifStudyConfiguration>();
-        foreach (var study in dicomStudies)
-        {
-            ohifConfigurations.Add(await dicomService.GenerateOhifStudyConfiguration(study));
-        }
-
-        return ohifConfigurations;
+        return await _dicomService.GetOhifStudyConfigurationAsync(studyInstanceUid);
     }
 
     [Authorize(Policy = "DoctorOnly")]
-    public async Task<string> GetOhifWadoUri(
-        [Service] IDicomService dicomService,
-        string studyInstanceUid, 
-        string seriesInstanceUid)
+    public async Task<IEnumerable<OhifStudyConfiguration>> GetPatientOhifStudies(Guid patientId)
     {
-        return await dicomService.GenerateOhifWadoUri(studyInstanceUid, seriesInstanceUid);
+        var studies = await _dicomStudyRepository.GetByPatientIdAsync(patientId.ToString());
+        var configurations = new List<OhifStudyConfiguration>();
+        
+        foreach (var study in studies)
+        {
+            var config = await _dicomService.GetOhifStudyConfigurationAsync(study.StudyInstanceUid);
+            if (config != null)
+            {
+                configurations.Add(config);
+            }
+        }
+
+        return configurations;
+    }
+
+    [Authorize(Policy = "DoctorOnly")]
+    public async Task<string> GetWadoUri(string studyInstanceUid, string seriesInstanceUid)
+    {
+        return await _dicomService.GenerateOhifWadoUri(studyInstanceUid, seriesInstanceUid);
+    }
+
+    public async Task<IEnumerable<DicomStudy>> GetStudies([Service] ISupabaseService supabaseService, string? patientId = null)
+    {
+        return await supabaseService.GetStudiesAsync(patientId);
+    }
+
+    public async Task<DicomStudy> GetStudyById(string id)
+    {
+        return await _dicomStudyRepository.GetByIdAsync(id);
     }
 }

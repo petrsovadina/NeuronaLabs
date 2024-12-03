@@ -8,11 +8,11 @@ namespace NeuronaLabs.Middleware
 {
     public class JwtMiddleware
     {
-        private readonly RequestDelegate _next;
+        private readonly Microsoft.AspNetCore.Http.RequestDelegate _next;
         private readonly IConfiguration _configuration;
         private readonly IAuthService _authService;
 
-        public JwtMiddleware(RequestDelegate next, IConfiguration configuration, IAuthService authService)
+        public JwtMiddleware(Microsoft.AspNetCore.Http.RequestDelegate next, IConfiguration configuration, IAuthService authService)
         {
             _next = next;
             _configuration = configuration;

@@ -3,26 +3,31 @@ using System.IO;
 using System.Threading.Tasks;
 using Xunit;
 using Moq;
-using NeuronaLabs.Services;
+using NeuronaLabs.Services.Interfaces;
+using NeuronaLabs.Services.Implementation;
 using NeuronaLabs.Repositories;
 using NeuronaLabs.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace NeuronaLabs.Tests.Services
 {
     public class DicomServiceTests
     {
-        private readonly Mock<IOrthancService> _mockOrthancService;
-        private readonly Mock<IDicomStudyRepository> _mockDicomStudyRepository;
+        private readonly Mock<IOrthancService> _orthancServiceMock;
+        private readonly Mock<IDicomStudyRepository> _dicomStudyRepositoryMock;
+        private readonly Mock<IConfiguration> _configurationMock;
         private readonly DicomService _dicomService;
 
         public DicomServiceTests()
         {
-            _mockOrthancService = new Mock<IOrthancService>();
-            _mockDicomStudyRepository = new Mock<IDicomStudyRepository>();
+            _orthancServiceMock = new Mock<IOrthancService>();
+            _dicomStudyRepositoryMock = new Mock<IDicomStudyRepository>();
+            _configurationMock = new Mock<IConfiguration>();
+            
             _dicomService = new DicomService(
-                _mockOrthancService.Object, 
-                _mockDicomStudyRepository.Object
-            );
+                _orthancServiceMock.Object,
+                _dicomStudyRepositoryMock.Object,
+                _configurationMock.Object);
         }
 
         [Fact]
@@ -33,11 +38,11 @@ namespace NeuronaLabs.Tests.Services
             var mockStream = new MemoryStream(new byte[] { 1, 2, 3 });
             var expectedOrthancId = "test-orthanc-id";
 
-            _mockOrthancService
+            _orthancServiceMock
                 .Setup(x => x.UploadDicomStudyAsync(It.IsAny<Stream>()))
                 .ReturnsAsync(expectedOrthancId);
 
-            _mockDicomStudyRepository
+            _dicomStudyRepositoryMock
                 .Setup(x => x.AddAsync(It.IsAny<DicomStudy>()))
                 .ReturnsAsync((DicomStudy study) => study);
 
@@ -50,8 +55,8 @@ namespace NeuronaLabs.Tests.Services
             Assert.Equal(expectedOrthancId, result.OrthancServerId);
             Assert.Equal(StudyStatus.NEW.ToString(), result.Status);
 
-            _mockOrthancService.Verify(x => x.UploadDicomStudyAsync(It.IsAny<Stream>()), Times.Once);
-            _mockDicomStudyRepository.Verify(x => x.AddAsync(It.IsAny<DicomStudy>()), Times.Once);
+            _orthancServiceMock.Verify(x => x.UploadDicomStudyAsync(It.IsAny<Stream>()), Times.Once);
+            _dicomStudyRepositoryMock.Verify(x => x.AddAsync(It.IsAny<DicomStudy>()), Times.Once);
         }
 
         [Fact]
@@ -76,15 +81,15 @@ namespace NeuronaLabs.Tests.Services
                 OrthancServerId = "test-orthanc-id" 
             };
 
-            _mockDicomStudyRepository
+            _dicomStudyRepositoryMock
                 .Setup(x => x.GetByIdAsync(studyId))
                 .ReturnsAsync(mockStudy);
 
-            _mockOrthancService
+            _orthancServiceMock
                 .Setup(x => x.DeleteStudyAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
-            _mockDicomStudyRepository
+            _dicomStudyRepositoryMock
                 .Setup(x => x.DeleteAsync(studyId))
                 .Returns(Task.CompletedTask);
 
@@ -92,8 +97,8 @@ namespace NeuronaLabs.Tests.Services
             await _dicomService.DeleteDicomStudyAsync(studyId);
 
             // Assert
-            _mockOrthancService.Verify(x => x.DeleteStudyAsync(mockStudy.OrthancServerId), Times.Once);
-            _mockDicomStudyRepository.Verify(x => x.DeleteAsync(studyId), Times.Once);
+            _orthancServiceMock.Verify(x => x.DeleteStudyAsync(mockStudy.OrthancServerId), Times.Once);
+            _dicomStudyRepositoryMock.Verify(x => x.DeleteAsync(studyId), Times.Once);
         }
     }
 }

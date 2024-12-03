@@ -1,129 +1,95 @@
-# NeuronaLabs Medical Platform 🏥
+# NeuronaLabs Medical Imaging Platform
 
-## 🌟 Projekt Overview
-Komplexní platforma pro správu zdravotnických dat s pokročilou integrací DICOM a zabezpečeným managementem pacientských informací.
+## 🏥 Project Overview
+NeuronaLabs is a comprehensive medical imaging and patient management platform designed to streamline healthcare data visualization and management.
 
-## 🚀 Technologický Stack
-- **Backend**: .NET 8.0 s GraphQL (HotChocolate)
-- **Frontend**: Next.js 15 s React
-- **Databáze**: Supabase (PostgreSQL)
-- **DICOM**: Orthanc Server, OHIF Viewer
-- **Kontejnerizace**: Docker Compose
-- **Autentizace**: Supabase Auth s JWT
+## 🚀 Technology Stack
+- **Frontend**: React, Next.js, OHIF Viewer
+- **Backend**: .NET Core, GraphQL (HotChocolate)
+- **Database**: Supabase (PostgreSQL)
+- **DICOM Management**: Orthanc DICOM Server
+- **Containerization**: Docker, Docker Compose
 
-## 🔧 Požadavky
+## 🔧 System Architecture
+### Microservices Components
+1. **Frontend Service**
+   - React-based user interface
+   - DICOM image visualization
+   - GraphQL client
+
+2. **Backend Service**
+   - GraphQL API
+   - Business logic processing
+   - Authentication management
+
+3. **Database Service**
+   - Supabase PostgreSQL
+   - User and patient data storage
+   - Row Level Security
+
+4. **DICOM Service**
+   - Orthanc DICOM server
+   - Medical image storage and retrieval
+
+## 🛠 Prerequisites
+- .NET Core 7.0+
+- Node.js 16+
 - Docker
 - Docker Compose
-- Make (volitelné)
-- Git
 
-## 🛠 Instalace a Konfigurace
+## 🚦 Quick Start
 
-### 1. Klonování repozitáře
+### Development Setup
+1. Clone the repository
 ```bash
-git clone https://github.com/vaše-organizace/neuronalabs.git
+git clone https://github.com/yourusername/neuronalabs.git
 cd neuronalabs
 ```
 
-### 2. Příprava prostředí
+2. Configure Environment
 ```bash
-# Kopírování konfiguračního souboru
 cp .env.example .env
-
-# Úprava konfigurace podle vašeho prostředí
-nano .env
+# Update .env with your configuration
 ```
 
-### 3. Inicializace projektu
+3. Start Services
 ```bash
-# Příprava projektu (generování tajných klíčů, stažení obrazů)
-make setup
-
-# Spuštění všech služeb
-make up
+docker-compose up --build
 ```
 
-## 🌐 Dostupné služby
+## 🔐 Authentication
+- Default Test User
+  - Email: admin@admin.cz
+  - Password: admin12345
+  - Role: doctor
 
-| Služba | URL | Popis |
-|--------|-----|-------|
-| Frontend | `http://localhost:3000` | Hlavní uživatelské rozhraní |
-| Backend API | `http://localhost:5000` | GraphQL API endpoint |
-| Supabase Studio | `http://localhost:3020` | Správa databáze |
-| Orthanc DICOM | `http://localhost:8042` | DICOM server |
-| OHIF Viewer | `http://localhost:3010` | Prohlížeč DICOM snímků |
-| Prometheus | `http://localhost:9090` | Monitoring |
+## 📦 Key Features
+- Patient management
+- DICOM image visualization
+- Secure authentication
+- Role-based access control
 
-## 📋 Dostupné Make příkazy
+## 🧪 Testing
+- Unit tests for backend
+- Integration tests
+- GraphQL schema validation
 
-- `make setup`: Inicializace projektu
-- `make up`: Spuštění služeb
-- `make down`: Zastavení služeb
-- `make restart`: Restart služeb
-- `make logs`: Zobrazení logů
-- `make migrate`: Migrace databáze
-- `make test`: Spuštění testů
-- `make clean`: Vyčištění Docker prostoru
+## 🚧 Current Development Status
+- [x] Basic project structure
+- [x] Supabase configuration
+- [ ] Complete GraphQL schema
+- [ ] OHIF Viewer integration
+- [ ] Comprehensive testing
 
-## 🔐 Konfigurace a Zabezpečení
+## 📝 Contributing
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-### Tajné klíče
-Projekt automaticky generuje tajné klíče pomocí `make secrets`:
-- JWT token
-- Supabase service key
+## 📄 License
+[Your License Here]
 
-### Proměnné prostředí
-Všechny konfigurace jsou spravovány přes `.env` soubor. Viz `.env.example` pro referenci.
-
-## 📊 Databázové schéma
-
-### Tabulky
-- `patients`: Osobní informace pacientů
-- `diagnoses`: Lékařské diagnózy a léčby
-- `dicom_studies`: Metadata DICOM studií
-
-### Bezpečnostní funkce
-- Automatické aktualizace timestampů
-- Řízení přístupu na úrovni řádků (RLS)
-- Jedinečné constrainty a validace
-
-## 🧪 Testování
-
-### Spuštění testů
-```bash
-make test
-```
-
-## 🚢 Nasazení
-
-### Produkční prostředí
-- Konfigurace pro produkci v `.env`
-- Podpora nasazení přes Docker Compose
-- Škálovatelná architektura mikroslužeb
-
-## 🤝 Přispívání
-
-1. Forkněte repozitář
-2. Vytvořte feature branch
-3. Commitněte změny
-4. Pushněte branch
-5. Vytvořte Pull Request
-
-## 📝 Licence
-
-[Doplňte licenční informace]
-
-## 🆘 Podpora
-
-Pro technickou podporu a dotazy kontaktujte [váš kontakt]
-
-## 🔮 Budoucí Plány
-
-- Implementace komplexního logování
-- Nastavení monitorovacích dashboardů
-- Penetrační testování
-- Vytvoření detailní uživatelské dokumentace
-
----
-
-**Poznámka**: Před použitím si prosím pečlivě prostudujte konfigurační soubory a nastavte všechna potřebná proměnná prostředí.
+## 🤝 Support
+For support, please open an issue in the GitHub repository.

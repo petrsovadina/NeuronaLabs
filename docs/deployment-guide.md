@@ -1,228 +1,145 @@
-# Průvodce nasazením NeuronaLabs
+# NeuronaLabs Deployment Guide
 
-Tento dokument poskytuje podrobný návod pro nasazení NeuronaLabs platformy.
+## 🌐 Deployment Architecture
 
-## Předpoklady
+### Components
+1. Frontend (Next.js)
+2. Backend (.NET Core)
+3. Supabase Database
+4. Orthanc DICOM Server
+5. Docker Orchestration
 
-### Minimální požadavky na server
-- CPU: 4 jádra
-- RAM: 8 GB
-- Disk: 50 GB SSD
-- OS: Ubuntu 20.04 LTS nebo novější
+## 🔧 Prerequisites
 
-### Požadované verze software
-- Docker: 20.10.x nebo novější
-- Docker Compose: 2.x
-- .NET SDK: 6.0.100 nebo novější
-- Node.js: 16.20.0 nebo novější
-- PostgreSQL: 13.x nebo novější
+### Software Requirements
+- Docker 20.10+
+- Docker Compose 1.29+
+- .NET Core 7.0+
+- Node.js 16+
 
-## Krok 1: Příprava serveru
+### Cloud Platforms
+- Supported:
+  - AWS
+  - Google Cloud Platform
+  - DigitalOcean
+  - Heroku
 
+## 🚀 Deployment Strategies
+
+### 1. Local Development Deployment
 ```bash
-# Aktualizace systému
-sudo apt update && sudo apt upgrade -y
-
-# Instalace základních nástrojů
-sudo apt install -y curl git wget unzip
-
-# Instalace Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-
-# Instalace Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-```
-
-## Krok 2: Klonování repozitáře
-
-```bash
-# Klonování repozitáře
-git clone https://github.com/your-org/neuronalabs.git
+# Clone repository
+git clone https://github.com/yourusername/neuronalabs.git
 cd neuronalabs
 
-# Kopírování a úprava konfigurace
+# Copy environment configuration
 cp .env.example .env
-nano .env  # Upravte podle potřeby
+
+# Update .env with your credentials
+# Supabase URL, Keys, Database Credentials
+
+# Build and start services
+docker-compose up --build
 ```
 
-## Krok 3: Konfigurace prostředí
+### 2. Production Deployment
 
-V souboru `.env` nastavte následující proměnné:
-
+#### Docker Deployment
 ```bash
-# Databáze
-POSTGRES_USER=neuronalabs
-POSTGRES_PASSWORD=<silné-heslo>
-POSTGRES_DB=neuronalabs
-
-# Backend
-ASPNETCORE_ENVIRONMENT=Production
-JWT_SECRET=<tajný-klíč>
-CORS_ORIGINS=https://vase-domena.com
-
-# Frontend
-NEXT_PUBLIC_API_URL=https://api.vase-domena.com
-```
-
-## Krok 4: SSL certifikáty
-
-```bash
-# Instalace Certbot
-sudo apt install -y certbot
-
-# Získání certifikátu
-sudo certbot certonly --standalone -d api.vase-domena.com
-sudo certbot certonly --standalone -d vase-domena.com
-```
-
-## Krok 5: Nasazení aplikace
-
-```bash
-# Build a spuštění kontejnerů
+# Build production images
 docker-compose -f docker-compose.prod.yml build
-docker-compose -f docker-compose.prod.yml up -d
 
-# Kontrola logů
-docker-compose -f docker-compose.prod.yml logs -f
-```
-
-## Krok 6: Inicializace databáze
-
-```bash
-# Spuštění migrace
-docker-compose -f docker-compose.prod.yml exec backend dotnet ef database update
-```
-
-## Krok 7: Kontrola nasazení
-
-1. Zkontrolujte dostupnost služeb:
-   - Frontend: https://vase-domena.com
-   - Backend API: https://api.vase-domena.com
-   - GraphQL Playground: https://api.vase-domena.com/graphql
-
-2. Zkontrolujte logy:
-```bash
-docker-compose -f docker-compose.prod.yml logs -f
-```
-
-3. Zkontrolujte health endpointy:
-```bash
-curl https://api.vase-domena.com/health
-```
-
-## Řešení problémů
-
-### 1. Databázové spojení
-Pokud se backend nemůže připojit k databázi:
-```bash
-# Kontrola běhu databáze
-docker-compose -f docker-compose.prod.yml ps
-# Kontrola logů databáze
-docker-compose -f docker-compose.prod.yml logs db
-```
-
-### 2. Frontend není dostupný
-```bash
-# Kontrola build logů
-docker-compose -f docker-compose.prod.yml logs frontend
-# Rebuild frontend kontejneru
-docker-compose -f docker-compose.prod.yml up -d --build frontend
-```
-
-### 3. Backend API nefunguje
-```bash
-# Kontrola logů
-docker-compose -f docker-compose.prod.yml logs backend
-# Restart backend služby
-docker-compose -f docker-compose.prod.yml restart backend
-```
-
-## Monitoring
-
-1. Kontrola využití zdrojů:
-```bash
-docker stats
-```
-
-2. Kontrola disků:
-```bash
-df -h
-```
-
-3. Kontrola logů:
-```bash
-# Všechny logy
-docker-compose -f docker-compose.prod.yml logs
-
-# Specifická služba
-docker-compose -f docker-compose.prod.yml logs [service]
-```
-
-## Zálohování
-
-1. Databáze:
-```bash
-# Vytvoření zálohy
-docker-compose -f docker-compose.prod.yml exec db pg_dump -U neuronalabs > backup.sql
-
-# Obnovení ze zálohy
-cat backup.sql | docker-compose -f docker-compose.prod.yml exec -T db psql -U neuronalabs
-```
-
-2. Soubory:
-```bash
-# Záloha uploads adresáře
-tar -czf uploads-backup.tar.gz ./uploads
-```
-
-## Aktualizace aplikace
-
-1. Stažení nových změn:
-```bash
-git pull origin main
-```
-
-2. Rebuild a restart služeb:
-```bash
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml build
+# Start production services
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-3. Kontrola migrace databáze:
-```bash
-docker-compose -f docker-compose.prod.yml exec backend dotnet ef database update
+#### Cloud Platform Deployment
+- AWS ECS
+- Kubernetes
+- DigitalOcean App Platform
+
+## 🔐 Security Configurations
+
+### Environment Variables
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_ANON_KEY`: Public Supabase key
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key
+- `JWT_SECRET`: Secret for JWT token generation
+- `ORTHANC_URL`: Orthanc DICOM server URL
+
+### SSL/TLS Configuration
+- Use Let's Encrypt for free SSL certificates
+- Configure HTTPS in reverse proxy (Nginx)
+
+## 🛡️ Access Management
+
+### User Roles
+- `admin`: Full system access
+- `doctor`: Patient and DICOM data access
+- `nurse`: Limited patient data access
+
+### Authentication Flow
+1. User login via Supabase Auth
+2. JWT token generation
+3. Role-based access control
+
+## 📊 Monitoring and Logging
+
+### Logging
+- Use Supabase logs
+- Implement application-level logging
+- Configure log rotation
+
+### Monitoring Tools
+- Prometheus
+- Grafana
+- ELK Stack
+
+## 🔄 Continuous Deployment
+
+### GitHub Actions Workflow
+```yaml
+name: NeuronaLabs CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Docker Images
+        run: docker-compose build
+      - name: Run Tests
+        run: docker-compose run backend-test
+      - name: Deploy to Production
+        run: |
+          # Add deployment script
 ```
 
-## Bezpečnostní doporučení
+## 🚧 Troubleshooting
 
-1. Pravidelná aktualizace:
-```bash
-# Aktualizace systému
-sudo apt update && sudo apt upgrade -y
+### Common Issues
+- Database connection problems
+- Authentication failures
+- DICOM image loading issues
 
-# Aktualizace Docker image
-docker-compose -f docker-compose.prod.yml pull
-```
+### Debugging
+- Check Docker logs
+- Verify environment configurations
+- Test individual service connectivity
 
-2. Kontrola logů:
-```bash
-# Kontrola auth logů
-sudo tail -f /var/log/auth.log
-```
+## 📝 Maintenance
 
-3. Firewall:
-```bash
-# Povolení pouze potřebných portů
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
-```
+### Regular Tasks
+- Update dependencies
+- Rotate secrets
+- Backup database
+- Monitor system performance
 
-## Kontakty pro podporu
-
-- Technická podpora: support@neuronalabs.com
-- Bezpečnostní incidenty: security@neuronalabs.com
-- Dokumentace: https://docs.neuronalabs.com
+## 🆘 Support
+For deployment issues, please contact support or open a GitHub issue.

@@ -1,20 +1,20 @@
-version: '3.8'
+version: '3.9'
 
 x-common-env: &common-env
-  ENVIRONMENT: ${ENVIRONMENT:-development}
-  LOG_LEVEL: ${LOG_LEVEL:-info}
+  ENVIRONMENT: ${ENVIRONMENT:-production}
+  LOG_LEVEL: ${LOG_LEVEL:-Warning}
 
 x-backend-env: &backend-env
   ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-  Supabase__Url: ${SUPABASE_URL}
-  Supabase__AnonKey: ${SUPABASE_ANON_KEY}
-  Supabase__ServiceKey: ${SUPABASE_SERVICE_KEY}
-  Orthanc__BaseUrl: ${ORTHANC_BASE_URL:-http://orthanc:8042}
-  JWT__SecretKey: ${JWT_SECRET_KEY}
+  Supabase__Url: ${NEXT_PUBLIC_SUPABASE_URL}
+  Supabase__AnonKey: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+  Supabase__ServiceKey: ${SUPABASE_SERVICE_ROLE_KEY}
+  Orthanc__BaseUrl: ${ORTHANC_URL}
+  JWT__SecretKey: ${JWT_SECRET}
 
 x-frontend-env: &frontend-env
-  NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+  NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
   NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend}
   NEXT_PUBLIC_OHIF_URL: ${NEXT_PUBLIC_OHIF_URL:-http://ohif-viewer}
 
@@ -22,15 +22,34 @@ services:
   # Backend .NET Core API
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: neuronalabs-backend
     environment:
       <<: [*common-env, *backend-env]
+      - ASPNETCORE_URLS=http://+:5000
     ports:
-      - "${BACKEND_PORT:-5000}:80"
+      - "${BACKEND_PORT:-5000}:5000"
     depends_on:
       - orthanc
+    networks:
+      - neuronalabs_network
+
+  orthanc:
+    image: jodogne/orthanc-plugins:latest
+    container_name: neuronalabs-orthanc
+    volumes:
+      - orthanc_data:/var/lib/orthanc/db
+      - ./dicom_storage:/var/lib/orthanc/dicom
+    ports:
+      - "${ORTHANC_PORT:-8042}:8042"
+    environment:
+      - ORTHANC_BASE_URL=${ORTHANC_URL}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q http://localhost:8042/system -O - || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - neuronalabs_network
 
@@ -49,31 +68,12 @@ services:
     networks:
       - neuronalabs_network
 
-  # Orthanc DICOM Server
-  orthanc:
-    image: jodogne/orthanc-plugins
-    container_name: neuronalabs-orthanc
-    volumes:
-      - orthanc_data:/var/lib/orthanc/db
-      - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json
-    ports:
-      - "${ORTHANC_PORT:-8042}:8042"
-    environment:
-      - ORTHANC_BASE_URL=${ORTHANC_BASE_URL:-http://orthanc:8042}
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q http://localhost:8042/system -O - || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - neuronalabs_network
-
   # OHIF DICOM Viewer
   ohif-viewer:
     image: ohif/viewer
     container_name: neuronalabs-ohif
     environment:
-      - REACT_APP_ORTHANC_URL=${ORTHANC_BASE_URL:-http://orthanc:8042}
+      - REACT_APP_ORTHANC_URL=${ORTHANC_URL}
     ports:
       - "${OHIF_PORT:-3010}:80"
     depends_on:
@@ -81,49 +81,8 @@ services:
     networks:
       - neuronalabs_network
 
-  # Monitoring Services
-  prometheus:
-    image: prom/prometheus
-    container_name: neuronalabs-prometheus
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
-    networks:
-      - neuronalabs_network
-
-  grafana:
-    image: grafana/grafana
-    container_name: neuronalabs-grafana
-    volumes:
-      - grafana_data:/var/lib/grafana
-    ports:
-      - "${GRAFANA_PORT:-3100}:3000"
-    depends_on:
-      - prometheus
-    networks:
-      - neuronalabs_network
-
-  # Logging Service
-  seq:
-    image: datalust/seq
-    container_name: neuronalabs-seq
-    environment:
-      - ACCEPT_EULA=Y
-    volumes:
-      - seq_data:/data
-    ports:
-      - "${SEQ_PORT:-5341}:5341"
-      - "${SEQ_WEB_PORT:-8081}:80"
-    networks:
-      - neuronalabs_network
-
 volumes:
   orthanc_data:
-  seq_data:
-  prometheus_data:
-  grafana_data:
 
 networks:
   neuronalabs_network:

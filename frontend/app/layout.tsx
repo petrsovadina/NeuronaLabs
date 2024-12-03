@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { Metadata } from 'next';
 import { AuthProvider } from '@/providers/AuthProvider';
+import { Providers } from './providers';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -32,22 +33,24 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <QueryProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AuthProvider>
-              <div className="min-h-screen bg-background">
-                <Navigation />
-                <main className="container mx-auto px-4 py-8">{children}</main>
-              </div>
-              <Toaster />
-            </AuthProvider>
-          </ThemeProvider>
-        </QueryProvider>
+        <Providers>
+          <QueryProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <AuthProvider>
+                <div className="min-h-screen bg-background">
+                  <Navigation />
+                  <main className="container mx-auto px-4 py-8">{children}</main>
+                </div>
+                <Toaster />
+              </AuthProvider>
+            </ThemeProvider>
+          </QueryProvider>
+        </Providers>
       </body>
     </html>
   );

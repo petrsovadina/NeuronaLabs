@@ -10,18 +10,18 @@ namespace NeuronaLabs.Data
         {
         }
 
-        public DbSet<User> Users { get; set; }
+        public DbSet<NeuronaLabs.Models.User> Users { get; set; }
         public DbSet<Patient> Patients { get; set; }
         public DbSet<DiagnosticData> DiagnosticData { get; set; }
         public DbSet<DicomStudy> DicomStudies { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<User>()
+            modelBuilder.Entity<NeuronaLabs.Models.User>()
                 .HasIndex(u => u.Username)
                 .IsUnique();
 
-            modelBuilder.Entity<User>()
+            modelBuilder.Entity<NeuronaLabs.Models.User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
 

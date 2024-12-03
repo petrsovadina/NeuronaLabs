@@ -18,26 +18,59 @@ using NeuronaLabs.Repositories;
 using NeuronaLabs.Validators;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
+using Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Konfigurace prostředí
+var configuration = EnvironmentConfig.LoadConfiguration();
+builder.Configuration.AddConfiguration(configuration);
+
 // Load environment variables
 builder.Configuration
-    .SetBasePath(Directory.GetCurrentDirectory())
+    .SetBasePath(builder.Environment.ContentRootPath)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
     .AddEnvironmentVariables()
     .Build();
 
-// Configuration
-builder.Services.Configure<SupabaseOptions>(options =>
+// Supabase konfigurace
+var supabaseUrl = builder.Configuration["Supabase:Url"];
+var supabaseKey = builder.Configuration["Supabase:ServiceRoleKey"];
+
+builder.Services.AddSingleton(provider => 
+    new Supabase.Client(supabaseUrl, supabaseKey, new Supabase.SupabaseOptions {
+        AutoRefreshToken = true,
+        PersistSession = true
+    }));
+
+// Nahradit stávající JWT autentizaci Supabase autentizací
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = supabaseUrl;
+        options.Audience = "authenticated";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = supabaseUrl,
+            ValidateAudience = true,
+            ValidAudience = "authenticated",
+            ValidateLifetime = true
+        };
+    });
+
+// Zachování stávajících rolí jako custom claims
+builder.Services.AddAuthorization(options =>
 {
-    options.Url = Environment.GetEnvironmentVariable("NEXT_PUBLIC_SUPABASE_URL") ?? 
-        builder.Configuration["Supabase:Url"];
-    options.ServiceKey = Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY") ?? 
-        builder.Configuration["Supabase:ServiceKey"];
-    options.AnonKey = Environment.GetEnvironmentVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY") ?? 
-        builder.Configuration["Supabase:AnonKey"];
+    options.AddPolicy("AdminOnly", policy => 
+        policy.RequireClaim("role", "admin"));
+    
+    options.AddPolicy("DoctorOnly", policy => 
+        policy.RequireClaim("role", "admin", "doctor"));
+    
+    options.AddPolicy("PatientOnly", policy => 
+        policy.RequireClaim("role", "admin", "doctor", "patient"));
 });
 
 // Database
@@ -63,43 +96,15 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// JWT Autentizace
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]))
-        };
-    });
-
-// Autorizace na základě rolí
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", policy => 
-        policy.RequireRole(UserRole.Admin.ToString()));
-    
-    options.AddPolicy("DoctorOnly", policy => 
-        policy.RequireRole(
-            UserRole.Admin.ToString(), 
-            UserRole.Doctor.ToString()));
-    
-    options.AddPolicy("PatientOnly", policy => 
-        policy.RequireRole(
-            UserRole.Admin.ToString(), 
-            UserRole.Doctor.ToString(), 
-            UserRole.Patient.ToString()));
-});
-
 // Registrace AuthService
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IDiagnosisService, DiagnosisService>();
+builder.Services.AddScoped<IDicomStudyService, DicomStudyService>();
+builder.Services.AddScoped<ISupabaseService, SupabaseService>();
+
+// Supabase Auth Service
+builder.Services.AddScoped<ISupabaseAuthService, SupabaseAuthService>();
 
 // Add health checks
 builder.Services.AddHealthChecks()
@@ -117,7 +122,7 @@ builder.Services.AddResponseCompression(options =>
 // CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
+    options.AddDefaultPolicy(builder =>
     {
         builder.AllowAnyOrigin()
                .AllowAnyMethod()
@@ -128,11 +133,6 @@ builder.Services.AddCors(options =>
 // Registrace repozitářů
 builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 builder.Services.AddScoped<IPatientRepository, PatientRepository>();
-
-// Registrace service vrstvy
-builder.Services.AddScoped<IPatientService, PatientService>();
-builder.Services.AddScoped<IDiagnosisService, DiagnosisService>();
-builder.Services.AddScoped<IDicomStudyService, DicomStudyService>();
 
 // Přidání validátorů
 builder.Services.AddScoped<IValidator<Patient>, PatientValidator>();
@@ -167,6 +167,7 @@ builder.Services
     .AddGraphQLServer()
     .AddQueryType<Query>()
     .AddMutationType<Mutation>()
+    .AddAuthorization()
     .AddType<PatientQueries>()
     .AddType<DicomStudyQueries>()
     .AddFiltering()
@@ -208,7 +209,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-app.UseCors("AllowAll");
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();

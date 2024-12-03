@@ -1,14 +1,35 @@
+using HotChocolate;
+using HotChocolate.Types;
 using NeuronaLabs.Models;
-using NeuronaLabs.Services;
+using NeuronaLabs.Models.Ohif;
+using NeuronaLabs.Services.Interfaces;
+using System.Threading.Tasks;
 
 namespace NeuronaLabs.GraphQL.Resolvers
 {
+    [ExtendObjectType("Query")]
     public class DicomStudyResolvers
     {
-        public string GetViewerUrl(DicomStudy dicomStudy, [Service] DicomService dicomService)
+        private readonly IDicomService _dicomService;
+
+        public DicomStudyResolvers(IDicomService dicomService)
         {
-            // Generování URL pro prohlížení DICOM studie
-            return dicomService.GenerateViewerUrl(dicomStudy.StudyInstanceUid);
+            _dicomService = dicomService;
+        }
+
+        public async Task<DicomStudy> GetDicomStudyById(string id)
+        {
+            return await _dicomService.GetStudyByIdAsync(id);
+        }
+
+        public async Task<IEnumerable<DicomStudy>> GetDicomStudiesByPatientId(string patientId)
+        {
+            return await _dicomService.GetStudiesByPatientIdAsync(patientId);
+        }
+
+        public async Task<OhifStudyConfiguration> GetOhifStudyConfiguration(string studyInstanceUid)
+        {
+            return await _dicomService.GetOhifStudyConfigurationAsync(studyInstanceUid);
         }
     }
 }

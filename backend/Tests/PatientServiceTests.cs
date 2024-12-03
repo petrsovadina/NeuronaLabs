@@ -7,20 +7,23 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using NeuronaLabs.Data;
 using NeuronaLabs.Models;
+using NeuronaLabs.Repositories;
 using NeuronaLabs.Services;
+using NeuronaLabs.Services.Implementation;
+using NeuronaLabs.Services.Interfaces;
 using Xunit;
 
 namespace NeuronaLabs.Tests
 {
     public class PatientServiceTests
     {
-        private readonly Mock<NeuronaLabsContext> _mockContext;
+        private readonly Mock<IPatientRepository> _patientRepositoryMock;
         private readonly PatientService _patientService;
 
         public PatientServiceTests()
         {
-            _mockContext = new Mock<NeuronaLabsContext>();
-            _patientService = new PatientService(_mockContext.Object);
+            _patientRepositoryMock = new Mock<IPatientRepository>();
+            _patientService = new PatientService(_patientRepositoryMock.Object);
         }
 
         [Fact]
@@ -33,13 +36,9 @@ namespace NeuronaLabs.Tests
                 new Patient { Id = 2, Name = "Jane Doe", Gender = "Female" }
             };
 
-            var mockSet = new Mock<DbSet<Patient>>();
-            mockSet.As<IQueryable<Patient>>().Setup(m => m.Provider).Returns(patients.AsQueryable().Provider);
-            mockSet.As<IQueryable<Patient>>().Setup(m => m.Expression).Returns(patients.AsQueryable().Expression);
-            mockSet.As<IQueryable<Patient>>().Setup(m => m.ElementType).Returns(patients.AsQueryable().ElementType);
-            mockSet.As<IQueryable<Patient>>().Setup(m => m.GetEnumerator()).Returns(patients.GetEnumerator());
-
-            _mockContext.Setup(c => c.Patients).Returns(mockSet.Object);
+            _patientRepositoryMock
+                .Setup(x => x.GetAllAsync())
+                .ReturnsAsync(patients);
 
             // Act
             var result = await _patientService.GetAllPatientsAsync();
@@ -51,39 +50,91 @@ namespace NeuronaLabs.Tests
         }
 
         [Fact]
-        public async Task CreatePatientAsync_ShouldAddAndReturnPatient()
+        public async Task GetPatientByIdAsync_ReturnsPatient_WhenPatientExists()
         {
             // Arrange
-            var patient = new Patient { Name = "John Doe" };
-            var mockSet = new Mock<DbSet<Patient>>();
-            _mockContext.Setup(c => c.Patients).Returns(mockSet.Object);
-            _mockContext.Setup(c => c.SaveChangesAsync(default)).ReturnsAsync(1);
+            var patientId = Guid.NewGuid();
+            var expectedPatient = new Patient
+            {
+                Id = patientId,
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            _patientRepositoryMock
+                .Setup(x => x.GetByIdAsync(patientId))
+                .ReturnsAsync(expectedPatient);
 
             // Act
-            var result = await _patientService.CreatePatientAsync(patient);
+            var result = await _patientService.GetPatientByIdAsync(patientId);
 
             // Assert
-            Assert.Equal(patient.Name, result.Name);
-            mockSet.Verify(m => m.Add(It.IsAny<Patient>()), Times.Once());
-            _mockContext.Verify(m => m.SaveChangesAsync(default), Times.Once());
+            Assert.NotNull(result);
+            Assert.Equal(expectedPatient.Id, result.Id);
+            Assert.Equal(expectedPatient.FirstName, result.FirstName);
+            Assert.Equal(expectedPatient.LastName, result.LastName);
         }
 
         [Fact]
-        public async Task UpdatePatientAsync_ShouldUpdateAndReturnPatient()
+        public async Task CreatePatientAsync_ShouldReturnNewPatient_WhenValidDataProvided()
         {
             // Arrange
-            var patient = new Patient { Id = 1, Name = "John Doe" };
-            var mockSet = new Mock<DbSet<Patient>>();
-            _mockContext.Setup(c => c.Patients).Returns(mockSet.Object);
-            _mockContext.Setup(c => c.SaveChangesAsync(default)).ReturnsAsync(1);
+            var newPatient = new Patient
+            {
+                FirstName = "Jane",
+                LastName = "Smith",
+                DateOfBirth = DateTime.Now.AddYears(-30)
+            };
+
+            _patientRepositoryMock
+                .Setup(x => x.AddAsync(It.IsAny<Patient>()))
+                .ReturnsAsync((Patient patient) => patient);
 
             // Act
-            var result = await _patientService.UpdatePatientAsync(patient);
+            var result = await _patientService.CreatePatientAsync(newPatient);
 
             // Assert
-            Assert.Equal(patient.Name, result.Name);
-            mockSet.Verify(m => m.Update(It.IsAny<Patient>()), Times.Once());
-            _mockContext.Verify(m => m.SaveChangesAsync(default), Times.Once());
+            Assert.NotNull(result);
+            Assert.Equal(newPatient.FirstName, result.FirstName);
+            Assert.Equal(newPatient.LastName, result.LastName);
+            Assert.Equal(newPatient.DateOfBirth, result.DateOfBirth);
+        }
+
+        [Fact]
+        public async Task UpdatePatientAsync_ShouldReturnUpdatedPatient_WhenPatientExists()
+        {
+            // Arrange
+            var patientId = Guid.NewGuid();
+            var existingPatient = new Patient
+            {
+                Id = patientId,
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            var updatedPatient = new Patient
+            {
+                Id = patientId,
+                FirstName = "Johnny",
+                LastName = "Doe"
+            };
+
+            _patientRepositoryMock
+                .Setup(x => x.GetByIdAsync(patientId))
+                .ReturnsAsync(existingPatient);
+
+            _patientRepositoryMock
+                .Setup(x => x.UpdateAsync(It.IsAny<Patient>()))
+                .ReturnsAsync((Patient patient) => patient);
+
+            // Act
+            var result = await _patientService.UpdatePatientAsync(updatedPatient);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(updatedPatient.Id, result.Id);
+            Assert.Equal(updatedPatient.FirstName, result.FirstName);
+            Assert.Equal(updatedPatient.LastName, result.LastName);
         }
 
         [Fact]
@@ -91,16 +142,16 @@ namespace NeuronaLabs.Tests
         {
             // Arrange
             var patient = new Patient { Id = 1, Name = "John Doe" };
-            var mockSet = new Mock<DbSet<Patient>>();
-            _mockContext.Setup(c => c.Patients).Returns(mockSet.Object);
-            _mockContext.Setup(c => c.Patients.FindAsync(1)).ReturnsAsync(patient);
+
+            _patientRepositoryMock
+                .Setup(x => x.GetByIdAsync(patient.Id))
+                .ReturnsAsync(patient);
 
             // Act
-            await _patientService.DeletePatientAsync(1);
+            await _patientService.DeletePatientAsync(patient.Id);
 
             // Assert
-            _mockContext.Verify(c => c.Patients.Remove(patient), Times.Once);
-            _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+            _patientRepositoryMock.Verify(x => x.DeleteAsync(patient), Times.Once);
         }
     }
 }

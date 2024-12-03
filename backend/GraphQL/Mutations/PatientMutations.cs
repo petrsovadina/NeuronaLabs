@@ -3,6 +3,7 @@ using HotChocolate.Types;
 using Microsoft.EntityFrameworkCore;
 using NeuronaLabs.Data;
 using NeuronaLabs.GraphQL.Types;
+using NeuronaLabs.GraphQL.Types.Inputs;
 using NeuronaLabs.Models;
 using NeuronaLabs.Services;
 using System.ComponentModel.DataAnnotations;

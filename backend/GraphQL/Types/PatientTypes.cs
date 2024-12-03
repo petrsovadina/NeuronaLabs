@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace NeuronaLabs.GraphQL.Types
 {
-    public record PatientType
+    public record ExtendedPatientType
     {
         public Guid Id { get; init; }
         
@@ -41,37 +41,5 @@ namespace NeuronaLabs.GraphQL.Types
         public string? Email { get; init; }
         public string? PhoneNumber { get; init; }
         public string? MedicalInsuranceNumber { get; init; }
-    }
-
-    public record DicomStudyType
-    {
-        public Guid Id { get; init; }
-        public Guid PatientId { get; init; }
-        public string StudyInstanceUid { get; init; }
-        public DateTime StudyDate { get; init; }
-        public string Modality { get; init; }
-        public string? Description { get; init; }
-        public string? OrthancStudyId { get; init; }
-        public int SeriesCount { get; init; }
-        public int ImagesCount { get; init; }
-        public string StudyStatus { get; init; }
-    }
-
-    public record CreateDicomStudyInput
-    {
-        [Required]
-        public Guid PatientId { get; init; }
-        
-        [Required]
-        public string StudyInstanceUid { get; init; }
-        
-        [Required]
-        public DateTime StudyDate { get; init; }
-        
-        [Required]
-        public string Modality { get; init; }
-        
-        public string? Description { get; init; }
-        public string? OrthancStudyId { get; init; }
     }
 }

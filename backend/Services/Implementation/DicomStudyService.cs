@@ -1,200 +1,298 @@
+using FellowOakDicom;
+using FellowOakDicom.Network;
+using FellowOakDicom.Imaging;
+using NeuronaLabs.Models;
+using NeuronaLabs.Services.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.IO;
 using Microsoft.EntityFrameworkCore;
 using NeuronaLabs.Data;
-using NeuronaLabs.Models;
-using Dicom;
-using Dicom.Imaging;
-using System.IO;
+using NeuronaLabs.Services.Implementation;
 
-namespace NeuronaLabs.Services.Implementation;
-
-public class DicomStudyService : IDicomStudyService
+namespace NeuronaLabs.Services.Implementation
 {
-    private readonly ApplicationDbContext _context;
-    private readonly ILogger<DicomStudyService> _logger;
-    private readonly IConfiguration _configuration;
-    private readonly string _dicomStoragePath;
-
-    public DicomStudyService(
-        ApplicationDbContext context, 
-        ILogger<DicomStudyService> logger,
-        IConfiguration configuration)
+    public class DicomStudyService : IDicomStudyService
     {
-        _context = context;
-        _logger = logger;
-        _configuration = configuration;
-        _dicomStoragePath = _configuration["DicomStorage:Path"] ?? 
-            Path.Combine(Directory.GetCurrentDirectory(), "DicomStorage");
-    }
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<DicomStudyService> _logger;
+        private readonly IConfiguration _configuration;
+        private readonly string _dicomStoragePath;
 
-    public async Task<DicomStudy> UploadDicomStudyAsync(DicomStudy dicomStudy)
-    {
-        try
+        public DicomStudyService(
+            ApplicationDbContext context, 
+            ILogger<DicomStudyService> logger,
+            IConfiguration configuration)
         {
-            // Ověření, zda pacient existuje
-            var patient = await _context.Patients.FindAsync(dicomStudy.PatientId);
-            if (patient == null)
+            _context = context;
+            _logger = logger;
+            _configuration = configuration;
+            _dicomStoragePath = _configuration["DicomStorage:Path"] ?? 
+                Path.Combine(Directory.GetCurrentDirectory(), "DicomStorage");
+        }
+
+        public async Task<DicomStudy> UploadDicomStudyAsync(DicomStudy dicomStudy)
+        {
+            try
             {
-                throw new KeyNotFoundException($"Pacient s ID {dicomStudy.PatientId} nebyl nalezen.");
+                // Ověření, zda pacient existuje
+                var patient = await _context.Patients.FindAsync(dicomStudy.PatientId);
+                if (patient == null)
+                {
+                    throw new KeyNotFoundException($"Pacient s ID {dicomStudy.PatientId} nebyl nalezen.");
+                }
+
+                // Zpracování DICOM souboru
+                var processedFilePath = await ProcessDicomFileAsync(dicomStudy.DicomFilePath);
+
+                dicomStudy.Id = Guid.NewGuid();
+                dicomStudy.DicomFilePath = processedFilePath;
+                dicomStudy.CreatedAt = DateTime.UtcNow;
+                dicomStudy.UpdatedAt = DateTime.UtcNow;
+
+                _context.DicomStudies.Add(dicomStudy);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Nahráno DICOM: {dicomStudy.Id}");
+                return dicomStudy;
             }
-
-            // Zpracování DICOM souboru
-            var processedFilePath = await ProcessDicomFileAsync(dicomStudy.DicomFilePath);
-
-            dicomStudy.Id = Guid.NewGuid();
-            dicomStudy.DicomFilePath = processedFilePath;
-            dicomStudy.CreatedAt = DateTime.UtcNow;
-            dicomStudy.UpdatedAt = DateTime.UtcNow;
-
-            _context.DicomStudies.Add(dicomStudy);
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation($"Nahráno DICOM: {dicomStudy.Id}");
-            return dicomStudy;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při nahrávání DICOM studie: {ex.Message}");
-            throw;
-        }
-    }
-
-    public async Task<DicomStudy> UpdateDicomStudyAsync(Guid id, DicomStudy dicomStudy)
-    {
-        try
-        {
-            var existingStudy = await _context.DicomStudies
-                .FirstOrDefaultAsync(ds => ds.Id == id);
-
-            if (existingStudy == null)
+            catch (Exception ex)
             {
-                throw new KeyNotFoundException($"DICOM studie s ID {id} nebyla nalezena.");
+                _logger.LogError(ex, $"Chyba při nahrávání DICOM studie: {ex.Message}");
+                throw;
             }
-
-            // Aktualizace pouze poskytnutých polí
-            existingStudy.StudyDescription = dicomStudy.StudyDescription ?? existingStudy.StudyDescription;
-            existingStudy.Modality = dicomStudy.Modality ?? existingStudy.Modality;
-            existingStudy.StudyDate = dicomStudy.StudyDate != default ? dicomStudy.StudyDate : existingStudy.StudyDate;
-
-            existingStudy.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation($"Aktualizována DICOM studie: {id}");
-            return existingStudy;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při aktualizaci DICOM studie {id}: {ex.Message}");
-            throw;
-        }
-    }
 
-    public async Task<bool> DeleteDicomStudyAsync(Guid id)
-    {
-        try
+        public async Task<DicomStudy> UpdateDicomStudyAsync(Guid id, DicomStudy dicomStudy)
         {
-            var dicomStudy = await _context.DicomStudies
-                .FirstOrDefaultAsync(ds => ds.Id == id);
-
-            if (dicomStudy == null)
+            try
             {
-                throw new KeyNotFoundException($"DICOM studie s ID {id} nebyla nalezena.");
-            }
+                var existingStudy = await _context.DicomStudies
+                    .FirstOrDefaultAsync(ds => ds.Id == id);
 
-            // Smazání fyzického souboru
-            if (File.Exists(dicomStudy.DicomFilePath))
+                if (existingStudy == null)
+                {
+                    throw new KeyNotFoundException($"DICOM studie s ID {id} nebyla nalezena.");
+                }
+
+                // Aktualizace pouze poskytnutých polí
+                existingStudy.StudyDescription = dicomStudy.StudyDescription ?? existingStudy.StudyDescription;
+                existingStudy.Modality = dicomStudy.Modality ?? existingStudy.Modality;
+                existingStudy.StudyDate = dicomStudy.StudyDate != default ? dicomStudy.StudyDate : existingStudy.StudyDate;
+
+                existingStudy.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Aktualizována DICOM studie: {id}");
+                return existingStudy;
+            }
+            catch (Exception ex)
             {
-                File.Delete(dicomStudy.DicomFilePath);
+                _logger.LogError(ex, $"Chyba při aktualizaci DICOM studie {id}: {ex.Message}");
+                throw;
             }
-
-            _context.DicomStudies.Remove(dicomStudy);
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation($"Smazána DICOM studie: {id}");
-            return true;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při mazání DICOM studie {id}: {ex.Message}");
-            throw;
-        }
-    }
 
-    public async Task<DicomStudy?> GetDicomStudyByIdAsync(Guid id)
-    {
-        try
+        public async Task<bool> DeleteDicomStudyAsync(Guid id)
         {
-            return await _context.DicomStudies
-                .Include(ds => ds.Patient)
-                .FirstOrDefaultAsync(ds => ds.Id == id);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při načítání DICOM studie {id}: {ex.Message}");
-            throw;
-        }
-    }
-
-    public async Task<IEnumerable<DicomStudy>> GetDicomStudiesByPatientIdAsync(Guid patientId)
-    {
-        try
-        {
-            // Ověření, zda pacient existuje
-            var patient = await _context.Patients.FindAsync(patientId);
-            if (patient == null)
+            try
             {
-                throw new KeyNotFoundException($"Pacient s ID {patientId} nebyl nalezen.");
+                var dicomStudy = await _context.DicomStudies
+                    .FirstOrDefaultAsync(ds => ds.Id == id);
+
+                if (dicomStudy == null)
+                {
+                    throw new KeyNotFoundException($"DICOM studie s ID {id} nebyla nalezena.");
+                }
+
+                // Smazání fyzického souboru
+                if (File.Exists(dicomStudy.DicomFilePath))
+                {
+                    File.Delete(dicomStudy.DicomFilePath);
+                }
+
+                _context.DicomStudies.Remove(dicomStudy);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Smazána DICOM studie: {id}");
+                return true;
             }
-
-            return await _context.DicomStudies
-                .Where(ds => ds.PatientId == patientId)
-                .OrderByDescending(ds => ds.StudyDate)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Chyba při načítání DICOM studií pro pacienta {patientId}: {ex.Message}");
-            throw;
-        }
-    }
-
-    public async Task<string> ProcessDicomFileAsync(string filePath)
-    {
-        try
-        {
-            // Kontrola existence souboru
-            if (!File.Exists(filePath))
+            catch (Exception ex)
             {
-                throw new FileNotFoundException($"DICOM soubor {filePath} nebyl nalezen.");
+                _logger.LogError(ex, $"Chyba při mazání DICOM studie {id}: {ex.Message}");
+                throw;
             }
-
-            // Vytvoření adresáře pro ukládání DICOM souborů, pokud neexistuje
-            Directory.CreateDirectory(_dicomStoragePath);
-
-            // Generování jedinečného názvu souboru
-            var fileName = $"{Guid.NewGuid():N}.dcm";
-            var destinationPath = Path.Combine(_dicomStoragePath, fileName);
-
-            // Kopírování souboru
-            File.Copy(filePath, destinationPath, true);
-
-            // Parsování DICOM metadat
-            var dicomFile = DicomFile.Open(destinationPath);
-            var dataset = dicomFile.Dataset;
-
-            // Extrakce metadat
-            var studyInstanceUid = dataset.GetString(DicomTag.StudyInstanceUID);
-            var studyDescription = dataset.GetString(DicomTag.StudyDescription);
-            var modality = dataset.GetString(DicomTag.Modality);
-
-            _logger.LogInformation($"Zpracováno DICOM: {studyInstanceUid}");
-
-            return destinationPath;
         }
-        catch (Exception ex)
+
+        public async Task<DicomStudy?> GetDicomStudyByIdAsync(Guid id)
         {
-            _logger.LogError(ex, $"Chyba při zpracování DICOM souboru: {ex.Message}");
-            throw;
+            try
+            {
+                return await _context.DicomStudies
+                    .Include(ds => ds.Patient)
+                    .FirstOrDefaultAsync(ds => ds.Id == id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Chyba při načítání DICOM studie {id}: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<DicomStudy>> GetDicomStudiesByPatientIdAsync(Guid patientId)
+        {
+            try
+            {
+                // Ověření, zda pacient existuje
+                var patient = await _context.Patients.FindAsync(patientId);
+                if (patient == null)
+                {
+                    throw new KeyNotFoundException($"Pacient s ID {patientId} nebyl nalezen.");
+                }
+
+                return await _context.DicomStudies
+                    .Where(ds => ds.PatientId == patientId)
+                    .OrderByDescending(ds => ds.StudyDate)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Chyba při načítání DICOM studií pro pacienta {patientId}: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<DicomStudy?> GetDicomStudyByStudyInstanceUidAsync(string studyInstanceUid)
+        {
+            try
+            {
+                return await _context.DicomStudies
+                    .Include(ds => ds.Patient)
+                    .FirstOrDefaultAsync(ds => ds.StudyInstanceUid == studyInstanceUid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Chyba při načítání DICOM studie s UID {studyInstanceUid}: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<DicomStudyMetadata?> GetStudyMetadataAsync(Guid studyId)
+        {
+            try
+            {
+                var study = await _context.DicomStudies
+                    .FirstOrDefaultAsync(ds => ds.Id == studyId);
+
+                if (study == null)
+                {
+                    return null;
+                }
+
+                // Zde můžete přidat logiku pro extrakci nebo načtení kompletních metadat
+                return new DicomStudyMetadata
+                {
+                    StudyInstanceUid = study.StudyInstanceUid,
+                    StudyDescription = study.StudyDescription,
+                    StudyDate = study.StudyDate,
+                    Modality = study.Modality.ToString(),
+                    PatientId = study.PatientId.ToString(),
+                    PatientName = study.Patient?.Name
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Chyba při načítání metadat DICOM studie {studyId}: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<string?> GetOhifViewerUrlAsync(Guid studyId)
+        {
+            try
+            {
+                var study = await _context.DicomStudies
+                    .FirstOrDefaultAsync(ds => ds.Id == studyId);
+
+                return study?.OhifViewerUrl;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Chyba při generování OHIF URL pro studii {studyId}: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<string> ProcessDicomFileAsync(string filePath)
+        {
+            try
+            {
+                // Kontrola existence souboru
+                if (!File.Exists(filePath))
+                {
+                    throw new FileNotFoundException($"DICOM soubor {filePath} nebyl nalezen.");
+                }
+
+                // Vytvoření adresáře pro ukládání DICOM souborů, pokud neexistuje
+                Directory.CreateDirectory(_dicomStoragePath);
+
+                // Generování jedinečného názvu souboru
+                var fileName = $"{Guid.NewGuid():N}.dcm";
+                var destinationPath = Path.Combine(_dicomStoragePath, fileName);
+
+                // Kopírování souboru
+                File.Copy(filePath, destinationPath, true);
+
+                // Parsování DICOM metadat
+                var dicomFile = DicomFile.Open(destinationPath);
+                var dataset = dicomFile.Dataset;
+
+                // Extrakce metadat
+                var studyInstanceUid = dataset.GetString(DicomTag.StudyInstanceUID);
+                var studyDescription = dataset.GetString(DicomTag.StudyDescription);
+                var modality = dataset.GetString(DicomTag.Modality);
+
+                _logger.LogInformation($"Zpracováno DICOM: {studyInstanceUid}");
+
+                return destinationPath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Chyba při zpracování DICOM souboru: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<DicomStudy>> GetAllDicomStudiesAsync()
+        {
+            try
+            {
+                return await _context.DicomStudies
+                    .Include(ds => ds.Patient)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba při načítání všech DICOM studií: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        public async Task<DicomStudy?> GetStudyByIdAsync(Guid studyId)
+        {
+            try
+            {
+                return await _context.DicomStudies
+                    .Include(ds => ds.Patient)
+                    .FirstOrDefaultAsync(ds => ds.Id == studyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Chyba při načítání DICOM studie {studyId}: {ex.Message}");
+                throw;
+            }
         }
     }
 }

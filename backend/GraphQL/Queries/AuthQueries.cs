@@ -7,7 +7,7 @@ using NeuronaLabs.Services.Interfaces;
 
 namespace NeuronaLabs.GraphQL.Queries;
 
-[ExtendObjectType(Name = "Query")]
+[ExtendObjectType("Query")]
 public class AuthQueries
 {
     private readonly IAuthService _authService;
@@ -37,9 +37,9 @@ public class AuthQueries
     }
 
     [Authorize]
-    public UserRole ParseUserRole(string userRole)
+    public NeuronaLabs.Models.Identity.UserRole ParseUserRole(string userRole)
     {
-        return Enum.Parse<UserRole>(userRole);
+        return Enum.Parse<NeuronaLabs.Models.Identity.UserRole>(userRole);
     }
 
     [Authorize]

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace NeuronaLabs.GraphQL.Mutations
 {
-    [ExtendObjectType(Name = "Mutation")]
+    [ExtendObjectType("Mutation")]
     public class Mutation
     {
         /// <summary>

@@ -2,34 +2,45 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # Uncomment when Alertmanager is configured
+          # - alertmanager:9093
+
+rule_files:
+  # Uncomment when alert rules are defined
+  # - "alert_rules.yml"
+
 scrape_configs:
   # Sledování .NET Core backend
   - job_name: 'backend'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['backend:80']
+      - targets: ['backend:5000']
 
   # Sledování PostgreSQL
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres:5432']
 
-  # Sledování Redis
-  - job_name: 'redis'
+  # Sledování Orthanc
+  - job_name: 'orthanc'
     static_configs:
-      - targets: ['redis:6379']
+      - targets: ['orthanc:8042']
 
   # Sledování Node Exporteru
   - job_name: 'node_exporter'
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['localhost:9100']
 
-# Alerting rules
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets:
-          - alertmanager:9093
+  # Sledování Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
 
-rule_files:
-  - "/etc/prometheus/alert_rules.yml"
+  # Optional: Add more service discovery configurations
+  # - job_name: 'kubernetes-nodes'
+  #   kubernetes_sd_configs:
+  #     - role: node

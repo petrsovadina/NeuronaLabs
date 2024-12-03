@@ -7,12 +7,12 @@ namespace NeuronaLabs.Middleware
 {
     public class PerformanceMiddleware
     {
-        private readonly RequestDelegate _next;
+        private readonly Microsoft.AspNetCore.Http.RequestDelegate _next;
         private readonly ILogger<PerformanceMiddleware> _logger;
         private readonly PerformanceMetricsService _metrics;
 
         public PerformanceMiddleware(
-            RequestDelegate next,
+            Microsoft.AspNetCore.Http.RequestDelegate next,
             ILogger<PerformanceMiddleware> logger,
             PerformanceMetricsService metrics)
         {

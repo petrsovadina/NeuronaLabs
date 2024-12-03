@@ -1,7 +1,7 @@
 using HotChocolate;
 using HotChocolate.Types;
-using NeuronaLabs.Services;
 using NeuronaLabs.Models;
+using NeuronaLabs.Models.Identity;
 using System.ComponentModel.DataAnnotations;
 
 namespace NeuronaLabs.GraphQL.Mutations
@@ -13,7 +13,7 @@ namespace NeuronaLabs.GraphQL.Mutations
             [Service] AuthService authService,
             [Required] string email, 
             [Required] string password,
-            [Required] UserRole role)
+            [Required] NeuronaLabs.Models.Identity.UserRole role)
         {
             // Validace emailu
             if (!IsValidEmail(email))

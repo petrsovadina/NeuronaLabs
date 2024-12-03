@@ -26,6 +26,13 @@ const ROLE_PATHS: Record<string, string[]> = {
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
+  
+  // Ensure environment variables are loaded
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error('Missing Supabase environment variables')
+    return res
+  }
+
   const supabase = createMiddlewareClient<Database>({ req, res })
 
   // Refresh session if exists
